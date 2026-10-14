@@ -1,12 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import { detectTextFormat, parseSongText } from '../src/songs/parsers';
-import { parseSwaraSet } from '../src/songs/parsers/text';
+import { fluteSa, parseSwaraSet } from '../src/songs/parsers/text';
 
 const rel = (t: string) => {
   const r = parseSongText(t);
   const sa = r.song.sa!;
   return { r, p: r.song.notes.filter((n) => n.midi !== null).map((n) => n.midi! - sa), d: r.song.notes.map((n) => n.dur) };
 };
+
+describe('song sheets pasted from web sites', () => {
+  const SHEET = [
+    'Flute used for notations : G#', '', 'Flute Music:', 'S R G | M P (x2)', '',
+    'Violins Music:', 'S PM… gRg (x2)', '', '(A note to the reader about apostrophes)', '',
+    '==========', 'OPTION 2:', 'Flute used for notations : D', 'G G | G G – G',
+  ].join('\n');
+
+  it('reads the flute line, plays one version and skips other instruments', () => {
+    const { r, p } = rel(SHEET);
+    expect(r.song.sa).toBe(68); // G#4
+    expect(r.song.sections.map((s) => s.name)).toEqual(['Flute Music']);
+    expect(p).toEqual([0, 2, 4, 5, 7, 0, 2, 4, 5, 7]); // (x2) repeats the line
+    expect(r.warnings.map((w) => w.message).join(' ')).toMatch(/second version starts at line 11.*Violins Music/s);
+    expect(r.song.lyrics ?? []).toEqual([]); // headings and notes-to-reader aren't lyrics
+  });
+
+  it('knows the usual bansuri sizes', () => {
+    expect([fluteSa('G#'), fluteSa('E'), fluteSa('C'), fluteSa('G bass'), fluteSa('A'), fluteSa('F# middle'), fluteSa('C#5')])
+      .toEqual([68, 64, 72, 55, 69, 66, 73]);
+  });
+});
 
 describe('sargam as written on web sites', () => {
   it('reads notes run together, holds and glides, with lowercase komal notes', () => {

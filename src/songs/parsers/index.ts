@@ -3,7 +3,7 @@ import type { ImportFormat, ParseResult, Song } from '../../music/song';
 import { looksLikeAbc, parseAbc } from './abc';
 import { parseMidi } from './midi';
 import { parseMusicXml } from './musicxml';
-import { parseText } from './text';
+import { ALT_VERSION, parseText } from './text';
 import { mxlToText } from './zip';
 
 export { parseAbc, parseMidi, parseMusicXml, parseText };
@@ -16,8 +16,12 @@ const LETTER_TOKEN = /^[A-Ga-g](#|b)?\d?'*-*\/*$/;
 /** Guess which text notation was pasted. */
 export function detectTextFormat(text: string): TextFormat {
   if (looksLikeAbc(text)) return 'abc';
-  // "Sa: C#4", "Flute: E" or a swara list are only written for sargam.
-  if (/^\s*(sa|flute|notes|swaras)\s*[:=]/im.test(text)) return 'sargam';
+  // Judge by the first version only (a sheet may hold a second one, in another key).
+  const lines = text.split('\n');
+  const alt = lines.findIndex((l, i) => i > 0 && ALT_VERSION.test(l));
+  if (alt > 0) text = lines.slice(0, alt).join('\n');
+  // "Sa: C#4", "Flute: E", "Flute used for notations: G#" or a swara list are written for sargam.
+  if (/^\s*(sa|notes|swaras)\s*[:=]/im.test(text) || /^\s*(flute|bansuri)\b[^:=\n]{0,40}[:=]\s*[A-Ga-g]/im.test(text)) return 'sargam';
   const toks = text
     .split('\n')
     .filter((l) => !/^\s*\w+\s*:/.test(l)) // "Title: …" and other details

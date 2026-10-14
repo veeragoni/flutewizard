@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { editorSongId, instrument, mySongs, panel, root, songsTab, naming, showToast } from '../state';
+import { editorSongId, instrument, mySongs, panel, prefs, root, setPrefs, songsTab, naming, showToast } from '../state';
 import { builtinById } from '../songs/library';
 import { upsertSong } from '../songs/storage';
 import { detectTextFormat, parseSongText, songToText, type TextFormat } from '../songs/parsers';
@@ -167,12 +167,25 @@ export function Editor() {
           </select>
         </label>
         <label>
-          <span>Key</span>
+          <span>{format === 'sargam' ? 'Written for' : 'Key'}</span>
           <div class="input-with-btns">
-            <span class="static-field">{format === 'sargam' ? `Sa = ${noteName(song.sa ?? 60)}` : keyLabel(song.tonic, song.mode)}</span>
-            <button class="icon-btn tiny" title="Transpose down" onClick={() => update({ transpose: draft.transpose - 1 })}>−</button>
-            <button class="icon-btn tiny" title="Transpose up" onClick={() => update({ transpose: draft.transpose + 1 })}>+</button>
-            {draft.transpose !== 0 && <small class="muted">{draft.transpose > 0 ? '+' : ''}{draft.transpose}</small>}
+            {format === 'sargam' ? (
+              // Sargam is relative: this says which bansuri the notation was written on (its Sa).
+              <select value={song.sa ?? 60} title="The flute (Sa) the notation was written for" onChange={(e) => field('sa', noteName(Number((e.target as HTMLSelectElement).value)))}>
+                {[...new Set([...SA_CHOICES, song.sa ?? 60])].sort((a, b) => a - b).map((m) => (
+                  <option value={m}>{noteName(m, { octave: false })} flute · Sa {noteName(m)}</option>
+                ))}
+              </select>
+            ) : (
+              <span class="static-field">{keyLabel(song.tonic, song.mode)}</span>
+            )}
+            <button class="icon-btn tiny" title="Transpose down a semitone" disabled={draft.transpose <= -12} onClick={() => update({ transpose: Math.max(-12, draft.transpose - 1) })}>−</button>
+            <button class="icon-btn tiny" title="Transpose up a semitone" disabled={draft.transpose >= 12} onClick={() => update({ transpose: Math.min(12, draft.transpose + 1) })}>+</button>
+            {draft.transpose !== 0 && (
+              <button class="link small-text" title="Reset transposition" onClick={() => update({ transpose: 0 })}>
+                {draft.transpose > 0 ? '+' : ''}{draft.transpose} ×
+              </button>
+            )}
           </div>
         </label>
         <label class="f-num">
@@ -233,7 +246,7 @@ export function Editor() {
               {format === 'sargam' ? 'Sargam' : keyLabel(song.tonic, song.mode)} / {Math.round(song.bpm)} BPM / {song.time[0]}/{song.time[1]}
             </span>
           </div>
-          <Preview song={fitted} hard={hard} suggestion={suggestion} onTranspose={(t) => update({ transpose: t })} />
+          <Preview song={fitted} hard={hard} suggestion={suggestion} onTranspose={(t) => update({ transpose: t })} writtenSa={format === 'sargam' ? song.sa : undefined} />
         </div>
       </div>
     </Modal>
@@ -244,9 +257,10 @@ function formatName(f: TextFormat) {
   return f === 'abc' ? 'ABC' : f === 'sargam' ? 'Sargam' : 'Letters';
 }
 
-function Preview({ song, hard, suggestion, onTranspose }: { song: Song; hard: number; suggestion: { semis: number; hard: number } | null; onTranspose: (t: number) => void }) {
+function Preview({ song, hard, suggestion, onTranspose, writtenSa }: { song: Song; hard: number; suggestion: { semis: number; hard: number } | null; onTranspose: (t: number) => void; writtenSa?: number }) {
   const inst = instrument.value;
   const r = root.value;
+  const otherFlute = writtenSa !== undefined && inst.id === 'bansuri' && writtenSa !== r ? inst.keyOptions.find((k) => k.root === writtenSa) : undefined;
   const distinct = useMemo(() => {
     const set = new Set<number>();
     for (const n of song.notes) if (n.midi !== null) set.add(n.midi);
@@ -278,6 +292,14 @@ function Preview({ song, hard, suggestion, onTranspose }: { song: Song; hard: nu
           </span>
         ) : (
           <span class="ok-text">Every note is playable.</span>
+        )}
+        {otherFlute && (
+          <span class="muted">
+            Written for a {noteName(writtenSa!, { octave: false })} bansuri; it plays on your {noteName(r, { octave: false })} bansuri with the same fingerings, {Math.abs(r - writtenSa!)} semitone{Math.abs(r - writtenSa!) === 1 ? '' : 's'} {r > writtenSa! ? 'higher' : 'lower'}.{' '}
+            <button class="link gold" onClick={() => setPrefs({ keys: { ...prefs.value.keys, bansuri: writtenSa }, fluteCents: { ...prefs.value.fluteCents, bansuri: 0 } })}>
+              Switch to a {noteName(writtenSa!, { octave: false })} flute
+            </button>
+          </span>
         )}
       </div>
 
@@ -334,6 +356,9 @@ function HowToWrite() {
   );
 }
 
+/** Bansuri sizes the app offers (G3 to C5), by Sa. */
+const SA_CHOICES = Array.from({ length: 18 }, (_, i) => 55 + i);
+
 /** Rewrites (or inserts) a header line such as "Tempo: 90" in the song text. */
 export function setDirective(text: string, format: TextFormat, key: string, value: string): string {
   if (format === 'abc') {
@@ -347,6 +372,14 @@ export function setDirective(text: string, format: TextFormat, key: string, valu
     const re = new RegExp(`^${f}:.*$`, 'm');
     if (re.test(text)) return text.replace(re, `${f}:${v}`);
     return text.replace(/^(X:.*\n)?/, (m) => `${m}${f}:${v}\n`);
+  }
+  if (key === 'sa') {
+    // Update whichever line names the flute ("Sa: …" or "Flute used for notations: …"), else add one.
+    const saLine = /^\s*sa\s*[:=].*$/im;
+    const fluteLine = /^(\s*(?:flute|bansuri)\b[^:=\n]{0,40}[:=]\s*)[A-Ga-g].*$/im;
+    if (saLine.test(text)) return text.replace(saLine, `Sa: ${value}`);
+    if (fluteLine.test(text)) return text.replace(fluteLine, (_, head: string) => `${head}${value}`);
+    return `Sa: ${value}\n${text}`;
   }
   const names: Record<string, string> = { title: 'Title', tempo: 'Tempo', time: 'Time', artist: 'Artist' };
   const name = names[key];

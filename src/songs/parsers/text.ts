@@ -42,6 +42,14 @@ interface Ctx {
 type Mark = 'lead' | 'mid' | 'trail' | 'dot';
 
 const DIRECTIVE = /^\s*\{?\s*(title|t|artist|composer|by|tempo|bpm|key|time|meter|sa|flute|notes|swaras|scale|octave|unit|pickup)\s*[:=]\s*(.+?)\s*\}?\s*$/i;
+/** "Flute used for notations : G#", "Bansuri key - A" … */
+const FLUTE_LINE = /^\s*(?:flute|bansuri|whistle)\b[^:=\n]{0,40}[:=]\s*([A-Ga-g](?:#|♯|b|♭|\s*sharp|\s*flat)?(?![a-z]{2})\s*.*)$/i;
+/** A heading on its own line: "Flute Music:", "Violins Music:". */
+const HEADING = /^\s*([A-Za-z][A-Za-z0-9 '&/-]{0,40}?)\s*:\s*$/;
+/** Parts for other instruments, which aren't the flute melody. */
+const OTHER_PART = /\b(violins?|strings?|piano|keyboards?|guitars?|chords?|harmonium|tabla|drums?|backing|accompaniment|cello|sitar|santoor)\b/i;
+/** Where a second version of the same tune starts. */
+export const ALT_VERSION = /^\s*(?:[=*_~#-]{4,}|(?:option|version|alternative|alternate|variation)\s*\d*\s*:?)\s*$/i;
 const SECTION_BRACKET = /^\s*\[([^\]]{1,40})\]\s*$/;
 const SECTION_WORD = /^\s*(intro|verse|pre-?chorus|chorus|bridge|outro|interlude|refrain|solo|sthayi|sthai|antara|mukhda|pallavi|anupallavi|charanam|coda|part\s*[a-z0-9]+)\b\s*\d*\s*:?\s*$/i;
 
@@ -75,11 +83,46 @@ export function parseText(text: string, mode: TextMode, opts: { sa?: number } = 
   const lyrics: { start: number; text: string }[] = [];
   let lastNoteStart = 0;
 
+  let stoppedAt: { line: number; text: string } | null = null;
+  let skippingPart: { name: string; from: number; to: number } | null = null;
+  const skippedParts: { name: string; from: number; to: number }[] = [];
+
   lines.forEach((raw, i) => {
     const lineNo = i + 1;
     const line = raw.replace(/\t/g, ' ');
+    if (stoppedAt) return;
     if (!line.trim()) {
       prevWasNotes = false;
+      return;
+    }
+
+    if (ALT_VERSION.test(line)) {
+      // A second version of the tune follows: play only the first (if there is one yet).
+      if (notes.some((n) => n.midi !== null)) stoppedAt = { line: lineNo, text: line.trim() };
+      return;
+    }
+    const heading = !DIRECTIVE.test(line) && !FLUTE_LINE.test(line) ? HEADING.exec(line) : null;
+    if (heading || SECTION_BRACKET.test(line) || SECTION_WORD.test(line)) {
+      if (skippingPart) { skippedParts.push(skippingPart); skippingPart = null; }
+      const name = (heading?.[1] ?? '').trim();
+      if (heading && OTHER_PART.test(name) && !/flute|bansuri|whistle|melody/i.test(name)) {
+        skippingPart = { name, from: lineNo, to: lineNo };
+        return;
+      }
+      if (heading) {
+        song.sections.push({ name, start: t });
+        return;
+      }
+    }
+    if (skippingPart) {
+      skippingPart.to = lineNo;
+      return;
+    }
+    const fl = !DIRECTIVE.test(line) ? FLUTE_LINE.exec(line) : null;
+    if (fl) {
+      const p = fluteSa(fl[1]);
+      if (p === null) warnings.push({ line: lineNo, message: `Flute "${fl[1]}" should name its key, like "G#" or "E bass".` });
+      else if (opts.sa === undefined) ctx.sa = p;
       return;
     }
 
@@ -158,6 +201,8 @@ export function parseText(text: string, mode: TextMode, opts: { sa?: number } = 
 
     const parsed = parseLine(line, ctx, unit);
     if (!parsed) {
+      // A note to the reader in brackets, or a line of symbols: not lyrics.
+      if (/^\s*\(.*\)\s*$/.test(line) || !/[A-Za-z\u0900-\u097F]{2}/.test(line)) return;
       skippedLines.push(lineNo);
       // Words right under a line of notes belong to it; otherwise they introduce the next line.
       lyrics.push({ start: prevWasNotes ? lastNoteStart : t, text: line.trim() });
@@ -188,6 +233,14 @@ export function parseText(text: string, mode: TextMode, opts: { sa?: number } = 
     }
   });
 
+  if (skippingPart) skippedParts.push(skippingPart);
+  for (const sp of skippedParts) {
+    warnings.push({ line: sp.from, message: `Skipped the "${sp.name}" part (lines ${sp.from}–${sp.to}): only the flute melody plays.` });
+  }
+  if (stoppedAt) {
+    const s0 = stoppedAt as { line: number; text: string };
+    warnings.unshift({ line: s0.line, message: `A second version starts at line ${s0.line}; only the first one plays. To use the other, delete the first.` });
+  }
   if (mode === 'sargam') resolveMarks(marked, ctx.pending);
   song.notes = mergeRests(notes);
   song.lyrics = lyrics.length ? lyrics : undefined;
@@ -239,7 +292,11 @@ type Ev =
   | { kind: 'bar'; dur: number };
 
 /** Returns null when the line looks like words rather than notes. */
-function parseLine(line: string, ctx: Ctx, unit: number): { events: Ev[]; unknown: string[] } | null {
+function parseLine(line0: string, ctx: Ctx, unit: number): { events: Ev[]; unknown: string[] } | null {
+  // "(x2)" or "x3" at the end of a line plays it that many times.
+  const rep = /(?:\(\s*[x×]\s*(\d{1,2})\s*\)|(?:^|\s)[x×](\d{1,2}))\s*$/i.exec(line0);
+  const times = rep ? Math.max(1, Math.min(16, parseInt(rep[1] ?? rep[2], 10))) : 1;
+  const line = rep ? line0.slice(0, rep.index) : line0;
   let spaced = line
     // Komal/tivra markers written in brackets aren't rhythm groups.
     .replace(/\((k|komal)\)/gi, 'k')
@@ -302,6 +359,10 @@ function parseLine(line: string, ctx: Ctx, unit: number): { events: Ev[]; unknow
   if (good === 0 || bad >= good) {
     ctx.pending = pendingBefore;
     return null;
+  }
+  if (times > 1) {
+    const once = events.slice();
+    for (let k = 1; k < times; k++) for (const e of once) events.push(e.kind === 'note' ? { ...e, marks: [] } : { ...e });
   }
   return { events, unknown };
 }
@@ -448,19 +509,24 @@ function lowercaseSargam(lines: string[]) {
   return out;
 }
 
-/** "F# middle", "E", "G bass", "C#5" → MIDI of Sa. */
-function fluteSa(val: string): number | null {
-  const m = /^\s*([A-Ga-g])\s*(#|♯|b|♭|sharp|flat)?\s*(\d)?\s*(.*)$/i.exec(val);
+/**
+ * "F# middle", "G#", "E bass", "C high", "C#5" → MIDI of Sa. Bansuris are named by Sa: a plain
+ * key means the usual size (Sa in octave 4, C in octave 5); "bass" is an octave lower for G–B,
+ * "high"/"small" an octave higher. Kept within the sizes the app offers (G3–C5).
+ */
+export function fluteSa(val: string): number | null {
+  const m = /^\s*([A-Ga-g])\s*(#|♯|b(?![a-z])|♭|sharp|flat)?\s*(\d)?\s*(.*)$/i.exec(val);
   if (!m) return null;
   const acc = !m[2] ? 0 : /#|♯|sharp/i.test(m[2]) ? 1 : -1;
   const pc = (LETTER_TO_PC[m[1].toUpperCase()] + acc + 12) % 12;
   if (m[3]) return (parseInt(m[3], 10) + 1) * 12 + pc;
   const words = m[4].toLowerCase();
-  if (/mid|medium/.test(words)) return 60 + pc;
-  if (/high|small|soprano/.test(words)) return pc <= 4 ? 72 + pc : 60 + pc;
-  if (/bass|low|base/.test(words)) return pc >= 5 ? 48 + pc : 60 + pc;
-  // Plain key name: the usual concert bansuri sizes run from G3 up to F#4.
-  return pc >= 7 ? 48 + pc : 60 + pc;
+  let midi = (pc === 0 ? 72 : 60) + pc; // C natural is usually the small C (C5)
+  if (/bass|base|low/.test(words) && midi - 12 >= 55) midi -= 12;
+  else if (/high|small|soprano/.test(words) && midi + 12 <= 72) midi += 12;
+  while (midi > 72) midi -= 12;
+  while (midi < 55) midi += 12;
+  return midi;
 }
 
 const CARNATIC: Record<string, number[]> = { R: [1, 2, 3], G: [2, 3, 4], M: [5, 6], D: [8, 9, 10], N: [9, 10, 11] };
