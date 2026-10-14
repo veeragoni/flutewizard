@@ -69,11 +69,20 @@ export class MicPitch {
     return !!this.stream;
   }
 
-  async start(onReading: (r: PitchReading) => void) {
+  /** `onEnded`: the microphone went away (unplugged, switched device, permission revoked). */
+  async start(onReading: (r: PitchReading) => void, onEnded?: () => void) {
     const ctx = engine.ensure();
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
     });
+    const stream = this.stream;
+    for (const t of stream.getAudioTracks()) {
+      t.addEventListener('ended', () => {
+        if (this.stream !== stream) return;
+        this.stop();
+        onEnded?.();
+      });
+    }
     this.src = ctx.createMediaStreamSource(this.stream);
     // A gentle high-pass removes rumble and handling noise.
     const hp = new BiquadFilterNode(ctx, { type: 'highpass', frequency: 100 });

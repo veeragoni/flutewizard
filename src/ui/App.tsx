@@ -2,7 +2,7 @@ import { useEffect } from 'preact/hooks';
 import { activeNote, instrument, panel, prefs, root, setPrefs, toast, currentSong, heldHoles, heldKeys, shownNote } from '../state';
 import { INSTRUMENT_ORDER, INSTRUMENTS, noteFromFingers, type InstrumentId } from '../instruments';
 import { FluteView } from './FluteView';
-import { closeKeyFinder, ensureAudio, findMyKey, fingerPreview, homeNoteHint, installKeyboard, keyFinder, micOn, micReading, setBlow, setFinger, setInputMode, CONCERT_KEYS, holeKeys, setOverblow } from '../play';
+import { closeKeyFinder, ensureAudio, findMyKey, micProblem, resumeMic, startMic, fingerPreview, homeNoteHint, installKeyboard, keyFinder, micOn, micReading, setBlow, setFinger, setInputMode, CONCERT_KEYS, holeKeys, setOverblow } from '../play';
 import { noteName } from '../music/theory';
 import { IconHand, IconKeyboard, IconMenu, IconMic, InstrumentIcon } from './icons';
 import { label, subLabel } from './names';
@@ -20,7 +20,7 @@ import { transportState } from '../audio/transport';
 import type { ConcertKey } from '../instruments/types';
 
 export function App() {
-  useEffect(() => installKeyboard(), []);
+  useEffect(() => { installKeyboard(); resumeMic(); }, []);
   const p = prefs.value;
 
   return (
@@ -235,7 +235,9 @@ function MicStatus() {
   return (
     <div class="mic-status">
       <span class={'mic-dot' + (micOn.value ? ' on' : '')} />
-      {micOn.value ? (
+      {micOn.value && micProblem.value === 'paused' ? (
+        <span>Click anywhere (or press a key) to start listening.</span>
+      ) : micOn.value ? (
         r.midi !== null ? (
           <span>
             Hearing <b>{label(r.midi)}</b> {r.cents >= 0 ? '+' : ''}{Math.round(r.cents)}¢
@@ -244,8 +246,17 @@ function MicStatus() {
         ) : (
           <span>Listening… play a long note</span>
         )
+      ) : micProblem.value === 'starting' ? (
+        <span>Waiting for microphone permission… (allow it in the browser prompt)</span>
       ) : (
-        <span>Waiting for microphone permission…</span>
+        <>
+          <span>
+            {micProblem.value === 'blocked'
+              ? 'The microphone is blocked. Allow it from the icon in the address bar, then:'
+              : micProblem.value === 'ended' ? 'The microphone disconnected.' : 'The microphone is off.'}
+          </span>
+          <button class="primary-btn small" onClick={() => void startMic()}>Start microphone</button>
+        </>
       )}
       <div class="level"><div style={{ width: `${Math.min(100, r.level * 600)}%` }} /></div>
       {canFind && (

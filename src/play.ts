@@ -209,7 +209,10 @@ function isTyping(e: KeyboardEvent) {
 function onKeyDown(e: KeyboardEvent) {
   if (isTyping(e) || e.metaKey || e.ctrlKey) return;
   const mode = prefs.value.inputMode;
-  if (mode === 'mic') return;
+  if (mode === 'mic') {
+    if (engine.ctx?.state === 'suspended') void engine.ctx.resume();
+    return;
+  }
   const code = e.code;
   if (code === 'ArrowUp' || code === 'ArrowDown') {
     if (mode === 'keyboard') {
@@ -312,9 +315,14 @@ effect(() => {
 export const mic = new MicPitch();
 export const micReading = signal<{ midi: number | null; cents: number; freq: number | null; level: number }>({ midi: null, cents: 0, freq: null, level: 0 });
 export const micOn = signal(false);
+/** Why the microphone isn't running: still asking, blocked by the browser, or disconnected. */
+export const micProblem = signal<null | 'starting' | 'blocked' | 'ended' | 'paused'>(null);
+let micStarting = false;
 
 export async function startMic() {
-  if (mic.active) return;
+  if (mic.active || micStarting) return;
+  micStarting = true;
+  micProblem.value = 'starting';
   ensureAudio();
   const tracker = new NoteTracker((midi) => {
     activeNote.value = midi;
@@ -322,6 +330,9 @@ export async function startMic() {
   });
   try {
     await mic.start((r) => {
+      // After a reload the browser keeps audio paused until the first click or key press.
+      const paused = engine.ctx.state !== 'running';
+      if (paused !== (micProblem.value === 'paused')) micProblem.value = paused ? 'paused' : null;
       if (keyFinder.value && !keyFinder.value.done) return listenForKey(r.freq, r.clarity, r.level);
       if (r.freq && r.clarity > 0.8) {
         // Read notes against the player's own flute, which may sit a little sharp or flat.
@@ -332,12 +343,28 @@ export async function startMic() {
         micReading.value = { ...micReading.value, midi: null, freq: null, level: r.level };
         tracker.push(null);
       }
+    }, () => {
+      // The microphone disappeared (unplugged, or another device took over): try to reconnect once.
+      micOn.value = false;
+      activeNote.value = null;
+      micProblem.value = 'ended';
+      if (prefs.value.inputMode === 'mic') setTimeout(() => { if (prefs.value.inputMode === 'mic') void startMic(); }, 800);
     });
     micOn.value = true;
-  } catch {
-    showToast('Microphone access was blocked. Allow it in your browser to use "My flute".');
-    setInputMode('keyboard');
+    micProblem.value = null;
+  } catch (e) {
+    micProblem.value = (e as DOMException)?.name === 'NotAllowedError' ? 'blocked' : 'ended';
+    showToast(micProblem.value === 'blocked'
+      ? 'Microphone access was blocked. Allow it in your browser (the icon in the address bar) to use "My flute".'
+      : 'No microphone found. Plug one in, then press Start microphone.');
+  } finally {
+    micStarting = false;
   }
+}
+
+/** "My flute" is remembered between visits: start listening again when the page loads. */
+export function resumeMic() {
+  if (prefs.value.inputMode === 'mic' && !mic.active) void startMic();
 }
 
 /**
@@ -421,6 +448,7 @@ export function homeNoteHint() {
 export function stopMic() {
   mic.stop();
   micOn.value = false;
+  micProblem.value = null;
   activeNote.value = null;
 }
 
