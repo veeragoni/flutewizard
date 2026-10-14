@@ -127,6 +127,7 @@ select:focus, input:focus, textarea:focus { border-color: var(--gold); }
 
 /* ───────────── On-screen keyboard ───────────── */
 .kbd-panel {
+  min-width: 0; box-sizing: border-box;
   margin: 16px 24px 20px; padding: 12px 14px 14px; border: 1px solid var(--line); border-radius: 16px;
   background: rgba(23, 26, 31, 0.9); align-self: flex-start; max-width: 100%;
 }
@@ -179,10 +180,15 @@ select:focus, input:focus, textarea:focus { border-color: var(--gold); }
 .fd-missing { color: var(--faint); font-size: 11px; display: grid; place-items: center; }
 
 @media (max-width: 900px) {
-  .topbar { flex-wrap: wrap; padding: 10px 16px; gap: 10px; }
+  .topbar { flex-wrap: wrap; padding: 10px 16px; gap: 10px; position: static; }
   .brand { min-width: 0; }
   .brand b { font-size: 21px; }
-  .pickers { order: 3; width: 100%; justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; }
+  /* Pickers get their own full-width row that scrolls sideways if needed. */
+  .pickers { order: 3; flex: 1 0 100%; min-width: 0; flex-direction: column; gap: 8px; }
+  .picker-row { justify-content: space-between; }
+  .pick { flex: 1; padding: 6px 4px; }
+  .pick.inst { padding: 6px 2px; }
+  .pick.inst svg { width: 100%; max-width: 64px; height: auto; }
   .menu-btn { margin-left: auto; }
   .stage { padding: 8px 16px 0; }
   .flute-stage { grid-template-columns: 1fr; }
@@ -190,7 +196,8 @@ select:focus, input:focus, textarea:focus { border-color: var(--gold); }
   .note-big { font-size: 46px; }
   .blow-row { grid-column: 1; }
   .key-select { position: static; justify-content: flex-end; }
-  .kbd-panel { margin: 12px 16px; }
+  .kbd-panel { margin: 12px 16px; align-self: stretch; min-width: 0; }
+  .kbd-rows { padding-bottom: 4px; }
   .kcap { width: 48px; height: 52px; }
 }
 
