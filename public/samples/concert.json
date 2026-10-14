@@ -1,0 +1,57 @@
+{
+ "id": "concert",
+ "credit": "Flute: VS Chamber Orchestra Community Edition, Versilian Studios / Ivy Audio (vis.versilstudios.com)",
+ "license": "CC0 1.0",
+ "notes": [
+  {
+   "midi": 60,
+   "url": "concert/60.mp3",
+   "cents": -1
+  },
+  {
+   "midi": 64,
+   "url": "concert/64.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 69,
+   "url": "concert/69.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 72,
+   "url": "concert/72.mp3",
+   "cents": 2
+  },
+  {
+   "midi": 76,
+   "url": "concert/76.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 81,
+   "url": "concert/81.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 84,
+   "url": "concert/84.mp3",
+   "cents": -2
+  },
+  {
+   "midi": 88,
+   "url": "concert/88.mp3",
+   "cents": 1
+  },
+  {
+   "midi": 93,
+   "url": "concert/93.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 96,
+   "url": "concert/96.mp3",
+   "cents": 1
+  }
+ ]
+}

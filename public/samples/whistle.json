@@ -1,0 +1,52 @@
+{
+ "id": "whistle",
+ "credit": "Tin whistle: \"Waltons Irish ThinWhistle in D\" by cernoel, freesound.org/people/cernoel/packs/22189/",
+ "license": "CC0 1.0",
+ "notes": [
+  {
+   "midi": 74,
+   "url": "whistle/74.mp3",
+   "cents": 5
+  },
+  {
+   "midi": 76,
+   "url": "whistle/76.mp3",
+   "cents": 1
+  },
+  {
+   "midi": 78,
+   "url": "whistle/78.mp3",
+   "cents": -13
+  },
+  {
+   "midi": 79,
+   "url": "whistle/79.mp3",
+   "cents": 5
+  },
+  {
+   "midi": 81,
+   "url": "whistle/81.mp3",
+   "cents": -33
+  },
+  {
+   "midi": 83,
+   "url": "whistle/83.mp3",
+   "cents": -5
+  },
+  {
+   "midi": 84,
+   "url": "whistle/84.mp3",
+   "cents": 10
+  },
+  {
+   "midi": 85,
+   "url": "whistle/85.mp3",
+   "cents": -9
+  },
+  {
+   "midi": 86,
+   "url": "whistle/86.mp3",
+   "cents": 13
+  }
+ ]
+}

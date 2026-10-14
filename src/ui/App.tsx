@@ -1,0 +1,241 @@
+import { useEffect } from 'preact/hooks';
+import { activeNote, instrument, panel, prefs, root, setPrefs, toast, currentSong, heldHoles, heldKeys, shownNote } from '../state';
+import { INSTRUMENT_ORDER, INSTRUMENTS, noteFromFingers, type InstrumentId } from '../instruments';
+import { FluteView } from './FluteView';
+import { ensureAudio, fingerPreview, installKeyboard, micOn, micReading, setBlow, setFinger, setInputMode, CONCERT_KEYS, holeKeys, setOverblow } from '../play';
+import { IconHand, IconKeyboard, IconMenu, IconMic, InstrumentIcon } from './icons';
+import { label, subLabel } from './names';
+import { Keyboard } from './Keyboard';
+import { TransportBar } from './TransportBar';
+import { NoteLane } from './NoteLane';
+import { SongsPanel } from './SongsPanel';
+import { Editor } from './Editor';
+import { RecordOwn } from './RecordOwn';
+import { SideRail, SidePanels } from './SidePanels';
+import { MainMenu } from './MainMenu';
+import { transportState } from '../audio/transport';
+import type { ConcertKey } from '../instruments/types';
+
+export function App() {
+  useEffect(() => installKeyboard(), []);
+  const p = prefs.value;
+
+  return (
+    <div class="app" onPointerDown={() => ensureAudio()}>
+      <TopBar />
+      <TransportBar />
+      <main class="stage">
+        <SideRail />
+        <Stage />
+        {currentSong.value && <NoteLane />}
+      </main>
+      {p.showKeyboard && p.inputMode !== 'mic' && <Keyboard />}
+      {p.inputMode === 'mic' && <MicStatus />}
+      {panel.value === 'songs' && <SongsPanel />}
+      {panel.value === 'editor' && <Editor />}
+      {panel.value === 'own' && <RecordOwn />}
+      <SidePanels />
+      <MainMenu />
+      {toast.value && <div class="toast" role="status">{toast.value}</div>}
+    </div>
+  );
+}
+
+function TopBar() {
+  const p = prefs.value;
+  const pick = (id: InstrumentId) => setPrefs({ instrument: id });
+  return (
+    <header class="topbar">
+      <a class="brand" href="/">
+        <Logo />
+        <span>
+          <b>Flutely</b>
+          <small>Online Virtual Flute</small>
+        </span>
+      </a>
+      <div class="pickers">
+        <div class="picker">
+          <span class="picker-title">Play mode</span>
+          <div class="picker-row">
+            <button class={'pick' + (p.inputMode === 'keyboard' ? ' on' : '')} onClick={() => setInputMode('keyboard')} title="Play notes from the computer keyboard">
+              <IconKeyboard size={22} /><span>Keyboard</span>
+            </button>
+            <button class={'pick' + (p.inputMode === 'fingers' ? ' on' : '')} onClick={() => setInputMode('fingers')} title="Cover the holes with your fingers on the keyboard or screen">
+              <IconHand size={22} /><span>Fingers</span>
+            </button>
+            <button class={'pick' + (p.inputMode === 'mic' ? ' on' : '')} onClick={() => setInputMode('mic')} title="Play your real flute into the microphone">
+              <IconMic size={22} /><span>My flute</span>
+            </button>
+          </div>
+        </div>
+        <div class="picker">
+          <span class="picker-title">Pick a flute</span>
+          <div class="picker-row">
+            {INSTRUMENT_ORDER.map((id) => (
+              <button class={'pick inst' + (p.instrument === id ? ' on' : '')} onClick={() => pick(id)} title={INSTRUMENTS[id].blurb}>
+                <InstrumentIcon id={id} size={70} />
+                <span>{INSTRUMENTS[id].short}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <button class="icon-btn menu-btn" onClick={() => (panel.value = panel.value === 'help' ? null : 'help')} aria-label="Menu">
+        <IconMenu />
+      </button>
+    </header>
+  );
+}
+
+export function Logo({ size = 40 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true">
+      <defs>
+        <linearGradient id="logoG" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#ffd884" />
+          <stop offset="1" stop-color="#d98f2b" />
+        </linearGradient>
+      </defs>
+      <rect x="3" y="16" width="34" height="8" rx="4" transform="rotate(-28 20 20)" fill="url(#logoG)" />
+      {[0, 1, 2, 3].map((i) => (
+        <circle cx={15 + i * 5.2} cy={21.5 - i * 2.75} r="1.5" fill="#1a1c20" />
+      ))}
+      <path d="M6 31c4-1 6-4 6-4" stroke="#ffd884" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.7" />
+      <path d="M3 27c3 0 5-2 5-2" stroke="#ffd884" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.5" />
+    </svg>
+  );
+}
+
+function Stage() {
+  const inst = instrument.value;
+  const p = prefs.value;
+  const r = root.value;
+  const song = currentSong.value;
+  const idx = transportState.noteIndex.value;
+  const songNote = song && idx >= 0 ? song.notes[idx]?.midi ?? null : null;
+  const fingersMode = p.inputMode === 'fingers';
+  const held = fingersMode ? (inst.id === 'concert' ? { keys: heldKeys.value } : { holes: heldHoles.value }) : null;
+
+  // What to show: the note being played, else the song's current note, else a hovered key.
+  const shown = activeNote.value ?? (fingersMode ? fingerPreview.value : null) ?? songNote ?? shownNote.value;
+  const fingering = shown !== null ? inst.fingering(shown, r) : null;
+  const sounding = activeNote.value !== null;
+
+  const onHole = (i: number, state: 0 | 0.5 | 1) => {
+    const { full, half } = holeKeys();
+    setFinger(full[i], state === 1);
+    setFinger(half[i], state === 0.5);
+  };
+  const onKey = (k: ConcertKey, down: boolean) => {
+    const code = Object.entries(CONCERT_KEYS).find(([, v]) => v === k)?.[0];
+    if (code) setFinger(code, down);
+  };
+
+  const wantFingering = songNote !== null && fingersMode ? inst.fingering(songNote, r) : null;
+  const fingersMatch = fingersMode && songNote !== null && held
+    ? noteFromFingers(inst, r, held, 0)?.midi === songNote || noteFromFingers(inst, r, held, 1)?.midi === songNote || noteFromFingers(inst, r, held, 2)?.midi === songNote
+    : null;
+
+  return (
+    <section class="flute-stage">
+      <div class="note-readout" aria-live="polite">
+        {shown !== null ? (
+          <>
+            <div class={'note-big' + (sounding ? ' live' : '')}>{label(shown)}</div>
+            <div class="note-sub">{subLabel(shown)}</div>
+            {fingering?.f.hint && <div class="note-hint">{fingering.f.hint}</div>}
+            {fingering?.kind === 'holes' && fingering.f.register > 1 && (
+              <div class="note-hint">{fingering.f.register === 2 ? 'Overblow: blow a little faster' : 'Third register: fast, focused air'}</div>
+            )}
+            {!fingering && <div class="note-hint warn">Not playable on this flute</div>}
+          </>
+        ) : (
+          <div class="note-idle">
+            {p.inputMode === 'keyboard' && 'Press a key to play'}
+            {p.inputMode === 'fingers' && 'Cover holes, then hold Space to blow'}
+            {p.inputMode === 'mic' && 'Play your flute: I’m listening'}
+          </div>
+        )}
+      </div>
+      <div class="flute-wrap">
+        <FluteView
+          inst={inst}
+          fingering={fingering}
+          held={held && (held.holes?.length || held.keys?.length) ? held : null}
+          interactive={fingersMode}
+          onHole={onHole}
+          onKey={onKey}
+          sounding={sounding}
+        />
+        {wantFingering && fingersMatch === false && (
+          <div class="ghost-target">
+            Next: <b>{label(songNote!)}</b>
+          </div>
+        )}
+      </div>
+      {fingersMode && <BlowControls />}
+      <KeySelect />
+    </section>
+  );
+}
+
+function BlowControls() {
+  return (
+    <div class="blow-row">
+      <button
+        class="blow-btn"
+        onPointerDown={(e) => { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); setBlow(true); }}
+        onPointerUp={() => setBlow(false)}
+        onPointerCancel={() => setBlow(false)}
+      >
+        Hold to blow <kbd>Space</kbd>
+      </button>
+      <button
+        class="blow-btn soft"
+        onPointerDown={(e) => { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); setOverblow(1); }}
+        onPointerUp={() => setOverblow(0)}
+        onPointerCancel={() => setOverblow(0)}
+      >
+        Overblow <kbd>Shift</kbd>
+      </button>
+      <span class="blow-tip">Home row covers a hole, the row above half-covers it. Tap holes on the flute to cover them.</span>
+    </div>
+  );
+}
+
+function KeySelect() {
+  const inst = instrument.value;
+  if (inst.keyOptions.length < 2) return <div class="key-select"><span>{inst.keyOptions[0].label}</span></div>;
+  return (
+    <label class="key-select">
+      <span>{inst.id === 'bansuri' ? 'Flute key (Sa)' : 'Whistle key'}</span>
+      <select
+        value={root.value}
+        onChange={(e) => setPrefs({ keys: { ...prefs.value.keys, [inst.id]: Number((e.target as HTMLSelectElement).value) } })}
+      >
+        {inst.keyOptions.map((k) => <option value={k.root}>{k.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function MicStatus() {
+  const r = micReading.value;
+  return (
+    <div class="mic-status">
+      <span class={'mic-dot' + (micOn.value ? ' on' : '')} />
+      {micOn.value ? (
+        r.midi !== null ? (
+          <span>
+            Hearing <b>{label(r.midi)}</b> {r.cents >= 0 ? '+' : ''}{Math.round(r.cents)}¢
+          </span>
+        ) : (
+          <span>Listening… play a long note</span>
+        )
+      ) : (
+        <span>Waiting for microphone permission…</span>
+      )}
+      <div class="level"><div style={{ width: `${Math.min(100, r.level * 600)}%` }} /></div>
+    </div>
+  );
+}

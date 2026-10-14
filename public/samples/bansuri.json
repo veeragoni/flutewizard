@@ -1,0 +1,52 @@
+{
+ "id": "bansuri",
+ "credit": "Bansuri recordings by sankalp (freesound.org/people/sankalp), CC BY 4.0. Modified: sliced, trimmed, levelled, looped and re-encoded.",
+ "license": "CC BY 4.0",
+ "notes": [
+  {
+   "midi": 64,
+   "url": "bansuri/64.mp3",
+   "cents": 39
+  },
+  {
+   "midi": 66,
+   "url": "bansuri/66.mp3",
+   "cents": -2
+  },
+  {
+   "midi": 68,
+   "url": "bansuri/68.mp3",
+   "cents": 11
+  },
+  {
+   "midi": 69,
+   "url": "bansuri/69.mp3",
+   "cents": 16
+  },
+  {
+   "midi": 71,
+   "url": "bansuri/71.mp3",
+   "cents": 12
+  },
+  {
+   "midi": 73,
+   "url": "bansuri/73.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 75,
+   "url": "bansuri/75.mp3",
+   "cents": -19
+  },
+  {
+   "midi": 76,
+   "url": "bansuri/76.mp3",
+   "cents": 22
+  },
+  {
+   "midi": 83,
+   "url": "bansuri/83.mp3",
+   "cents": 68
+  }
+ ]
+}

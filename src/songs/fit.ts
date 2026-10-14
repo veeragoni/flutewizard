@@ -1,0 +1,29 @@
+import type { Instrument } from '../instruments';
+import { fitOctave, transposeSong, type Song } from '../music/song';
+
+/**
+ * The song as it will sound on this flute: Sargam songs move to the flute's Sa, then the
+ * song's saved transposition plus any extra, then octaves so it sits inside the range.
+ */
+export function fitSong(s: Song, inst: Instrument, root: number, extra = 0): Song {
+  let semis = s.transpose ?? 0;
+  if (s.source?.format === 'sargam' && inst.naming === 'sargam') semis += root - (s.sa ?? 60);
+  let moved = transposeSong(s, semis + extra);
+  const [lo, hi] = inst.range(root);
+  moved = transposeSong(moved, fitOctave(moved, lo, hi));
+  return moved;
+}
+
+export function hardNotes(s: Song, inst: Instrument, root: number): number {
+  return s.notes.filter((n) => n.midi !== null && !inst.fingering(n.midi, root)).length;
+}
+
+/** Transposition in [-6, 6] that leaves the fewest unplayable notes (prefers small moves). */
+export function bestTranspose(s: Song, inst: Instrument, root: number): { semis: number; hard: number } {
+  let best = { semis: 0, hard: Infinity };
+  for (const t of [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6]) {
+    const hard = hardNotes(fitSong({ ...s, transpose: 0 }, inst, root, t), inst, root);
+    if (hard < best.hard) best = { semis: t, hard };
+  }
+  return best;
+}

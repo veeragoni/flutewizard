@@ -1,0 +1,72 @@
+{
+ "id": "recorder",
+ "credit": "Recorder: Versilian Community Sample Library, Versilian Studios",
+ "license": "CC0 1.0",
+ "notes": [
+  {
+   "midi": 72,
+   "url": "recorder/72.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 74,
+   "url": "recorder/74.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 76,
+   "url": "recorder/76.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 78,
+   "url": "recorder/78.mp3",
+   "cents": -1
+  },
+  {
+   "midi": 80,
+   "url": "recorder/80.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 82,
+   "url": "recorder/82.mp3",
+   "cents": 1
+  },
+  {
+   "midi": 84,
+   "url": "recorder/84.mp3",
+   "cents": 1
+  },
+  {
+   "midi": 86,
+   "url": "recorder/86.mp3",
+   "cents": 1
+  },
+  {
+   "midi": 88,
+   "url": "recorder/88.mp3",
+   "cents": 0
+  },
+  {
+   "midi": 90,
+   "url": "recorder/90.mp3",
+   "cents": 1
+  },
+  {
+   "midi": 91,
+   "url": "recorder/91.mp3",
+   "cents": 1
+  },
+  {
+   "midi": 94,
+   "url": "recorder/94.mp3",
+   "cents": 1
+  },
+  {
+   "midi": 96,
+   "url": "recorder/96.mp3",
+   "cents": 3
+  }
+ ]
+}
