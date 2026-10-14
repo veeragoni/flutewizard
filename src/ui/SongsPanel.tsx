@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { signal } from '@preact/signals';
 import { librarySongs } from '../songs/library';
 import { closeSong, listen, loadSong, playAlong } from '../songs/actions';
 import { builtinEdits, editorSongId, instrument, mySongs, panel, root, showToast, songsTab, currentSourceSong } from '../state';
@@ -14,9 +15,38 @@ import { track } from '../analytics';
 
 export { Artwork };
 
+/** Set to put the cursor in the song search box (only when asked, so phones don't pop a keyboard). */
+const searchFocus = signal(false);
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+export const SEARCH_SHORTCUT = isMac ? '⌘K' : 'Ctrl+K';
+
+/** ⌘K / Ctrl+K: open the songs and jump straight into the search box. */
+export function openSongSearch() {
+  if (songsTab.value === 'recordings') songsTab.value = 'library';
+  panel.value = 'songs';
+  searchFocus.value = true;
+}
+
+export function installSearchShortcut() {
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() !== 'k' || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+    // Don't throw away a song being written.
+    if (panel.value === 'editor') return;
+    e.preventDefault();
+    openSongSearch();
+  });
+}
+
 export function SongsPanel() {
   const tab = songsTab.value;
   const [q, setQ] = useState('');
+  const search = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!searchFocus.value || !search.current) return;
+    search.current.focus();
+    search.current.select();
+    searchFocus.value = false;
+  }, [searchFocus.value, tab]);
   return (
     <Modal title="Songs & recordings" onClose={() => (panel.value = null)} wide>
       <div class="songs-layout">
@@ -40,7 +70,7 @@ export function SongsPanel() {
                 <MyActions />
               )}
               <div class="search-row">
-                <input type="search" placeholder="Find a song…" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
+                <input ref={search} type="search" placeholder={`Find a song…  ${SEARCH_SHORTCUT}`} aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'} value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
                 <button class="ghost-btn" onClick={() => { closeSong(); panel.value = null; }}>Free play</button>
               </div>
               <SongGrid songs={tab === 'library' ? librarySongs(builtinEdits.value) : mySongs.value} query={q} mine={tab === 'mine'} />

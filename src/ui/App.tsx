@@ -9,7 +9,7 @@ import { label, subLabel } from './names';
 import { Keyboard } from './Keyboard';
 import { TransportBar } from './TransportBar';
 import { NoteLane } from './NoteLane';
-import { SongsPanel } from './SongsPanel';
+import { installSearchShortcut, SongsPanel } from './SongsPanel';
 import { Editor } from './Editor';
 import { RecordOwn } from './RecordOwn';
 import { SideRail, SidePanels } from './SidePanels';
@@ -21,7 +21,7 @@ import { transportState } from '../audio/transport';
 import type { ConcertKey } from '../instruments/types';
 
 export function App() {
-  useEffect(() => { installKeyboard(); resumeMic(); }, []);
+  useEffect(() => { installKeyboard(); installSearchShortcut(); resumeMic(); }, []);
   const p = prefs.value;
 
   return (
