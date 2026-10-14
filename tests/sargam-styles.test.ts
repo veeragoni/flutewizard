@@ -64,3 +64,35 @@ describe('sargam as written on web sites', () => {
     expect(parseSwaraSet('hello world')).toBeNull();
   });
 });
+
+describe('notes written down from a video tutorial', () => {
+  // Bombay theme as written under a YouTube flute lesson; pitches checked against the video's audio.
+  const VIDEO = [
+    '02:52| Dh Dh Dh Dh Dh^^Pa , Pa DhNi Dh NiSaNi, Dh PaDhPa maGamaRe',
+    '',
+    '{Note : inside this video,  half the notation is not of the first line, then it is given here}',
+    '',
+    "07:39| NiSaRe GaMa'PaMa'Pa DhSaDh^^Pa Ga..........GamaGama Re.......",
+  ].join('\n');
+
+  it('reads timestamps, syllables run together, carets as holds and ornaments', () => {
+    expect(detectTextFormat(VIDEO)).toBe('sargam');
+    const { r, p, d } = rel(VIDEO);
+    expect(r.warnings).toEqual([]);
+    expect(r.song.lyrics ?? []).toEqual([]); // the note in braces isn't a lyric
+    expect(r.song.sections.map((s) => s.name)).toEqual(['02:52', '07:39']);
+    expect(p).toEqual([
+      9, 9, 9, 9, 9, 7, 7, 9, 11, 9, 11, 12, 11, 9, 7, 9, 7, 5, 4, 5, 2,
+      // No octave marks: Sa after Ni goes up, Ni before Sa goes down. "ma" is shuddha, "Ma’" tivra.
+      -1, 0, 2, 4, 6, 7, 6, 7, 9, 12, 9, 7, 4, 4, 5, 4, 5, 2,
+    ]);
+    expect(d.slice(4, 6)).toEqual([2, 1]); // Dh^^ held, then Pa
+    expect(d.slice(10, 13)).toEqual([0.25, 0.25, 1]); // NiSaNi: two grace notes landing on Ni
+  });
+
+  it('leaves marked octaves to the writer', () => {
+    expect(rel("S R G M P D N S'").p).toEqual([0, 2, 4, 5, 7, 9, 11, 12]);
+    expect(rel('Sa Re Ga Ma Pa Dha Ni Sa').p).toEqual([0, 2, 4, 5, 7, 9, 11, 12]); // unmarked: Sa goes up
+    expect(rel('Sa .Dha Pa Dha Sa').p).toEqual([0, -3, 7, 9, 0]); // the writer marks lower notes, so others stay
+  });
+});

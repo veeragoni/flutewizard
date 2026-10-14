@@ -3,7 +3,7 @@ import type { ImportFormat, ParseResult, Song } from '../../music/song';
 import { looksLikeAbc, parseAbc } from './abc';
 import { parseMidi } from './midi';
 import { parseMusicXml } from './musicxml';
-import { ALT_VERSION, parseText } from './text';
+import { ALT_VERSION, parseText, TIMESTAMP } from './text';
 import { mxlToText } from './zip';
 
 export { parseAbc, parseMidi, parseMusicXml, parseText };
@@ -24,6 +24,7 @@ export function detectTextFormat(text: string): TextFormat {
   if (/^\s*(sa|notes|swaras)\s*[:=]/im.test(text) || /^\s*(flute|bansuri)\b[^:=\n]{0,40}[:=]\s*[A-Ga-g]/im.test(text)) return 'sargam';
   const toks = text
     .split('\n')
+    .map((l) => l.replace(TIMESTAMP, ''))
     .filter((l) => !/^\s*\w+\s*:/.test(l)) // "Title: …" and other details
     .join(' ')
     .split(/[\s|(),~…–—]+/)
@@ -36,6 +37,8 @@ export function detectTextFormat(text: string): TextFormat {
     else if (/^[.'*]*[SRMPNsrmpn][.'*]*-*$/.test(bare)) sargam += 1;
     // Single letters run together ("MPD", "S'NS'N"): sargam when any of them can't be a letter name.
     else if (/^[.,'*]*([SRGMPDNsrgmpdn][.,'*]*){2,}-*$/.test(bare) && /[SRMPNsrmpn]/.test(bare)) sargam += 2;
+    // Syllables run together ("DhNi", "maGamaRe", "Dh^^Pa").
+    else if (/^[.,'*^]*((sa|re|ri|ga|ma|pa|dha|dh|da|ni)[.,'*^]*){2,}-*$/i.test(bare)) sargam += 2;
     if (LETTER_TOKEN.test(bare)) letters += 1;
   }
   return sargam > letters ? 'sargam' : 'letters';

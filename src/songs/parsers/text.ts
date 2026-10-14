@@ -10,7 +10,8 @@ import {
  *  sargam:   Sa Re Ga Ma Pa Dha Ni (or S R G M P D N). Komal with a "k" suffix (Rek, Re(k)) or lowercase
  *            single letters (r g d n); if a lowercase m appears, m = shuddha Ma and M = tivra Ma. Lower octave
  *            with a dot or comma (.P, P., ,P), upper octave with ' or * (S' or S*). Single letters can be
- *            run together (MPD, RgR), each then lasting half a beat. Web sites use ’ both ways (’N lower,
+ *            run together (MPD, RgR), each then lasting half a beat (RgR, NiSaNi: two grace notes and a
+ *            beat on the last). Web sites use ’ both ways (’N lower,
  *            S’ upper); each ambiguous mark is resolved by whichever reading gives the smoother melody.
  *
  * Rhythm (both): each note is one beat. "-", "–" or "…" holds a beat (G-- or G - -), "/" halves (C/ = half beat),
@@ -27,6 +28,8 @@ interface Ctx {
   caseSensitiveSargam: boolean;
   /** A lowercase m was written, so uppercase M means tivra Ma. */
   tivraUpperM: boolean;
+  /** Syllables are capitalised (Sa Re Ga) but "ma" is written lowercase, so "Ma" and "Ma’" mean tivra Ma. */
+  tivraCapitalMa: boolean;
   /** Everything is written in lowercase (s, p too), so capitals mean the upper octave (nSRR). */
   upperIsTaar: boolean;
   /** Dots follow the note they lower (n.d.p.), rather than lead it (.N). */
@@ -36,6 +39,9 @@ interface Ctx {
   baseOctave: number;
   /** Apostrophe marks seen since the last note (sargam), waiting to be attached to the next note. */
   pending: Mark[];
+  /** Octave signs that aren't apostrophes: dots and commas (lower), * and ^ (upper). */
+  lowerSigns: number;
+  upperSigns: number;
 }
 
 /** Where an apostrophe sat: at the start of a token, between two run-together notes, or at the end. */
@@ -50,6 +56,8 @@ const HEADING = /^\s*([A-Za-z][A-Za-z0-9 '&/-]{0,40}?)\s*:\s*$/;
 const OTHER_PART = /\b(violins?|strings?|piano|keyboards?|guitars?|chords?|harmonium|tabla|drums?|backing|accompaniment|cello|sitar|santoor)\b/i;
 /** Where a second version of the same tune starts. */
 export const ALT_VERSION = /^\s*(?:[=*_~#-]{4,}|(?:option|version|alternative|alternate|variation)\s*\d*\s*:?)\s*$/i;
+/** A video timestamp at the start of a line ("02:52|", "[1:05:10]"), as on notations made from tutorials. */
+export const TIMESTAMP = /^\s*[\[(]?(\d{1,2}:\d{2}(?::\d{2})?)[\])]?\s*(?:[|:>)\]-]+|[–—.](?=\s))?\s*/;
 const SECTION_BRACKET = /^\s*\[([^\]]{1,40})\]\s*$/;
 const SECTION_WORD = /^\s*(intro|verse|pre-?chorus|chorus|bridge|outro|interlude|refrain|solo|sthayi|sthai|antara|mukhda|pallavi|anupallavi|charanam|coda|part\s*[a-z0-9]+)\b\s*\d*\s*:?\s*$/i;
 
@@ -66,11 +74,14 @@ export function parseText(text: string, mode: TextMode, opts: { sa?: number } = 
     sa: opts.sa ?? 60,
     caseSensitiveSargam: !lower.plain && (lower.komal || lower.m),
     tivraUpperM: !lower.plain && lower.m,
+    tivraCapitalMa: mode === 'sargam' && syllableCase(lines),
     upperIsTaar: lower.plain && lower.upper,
     dotSuffix: lower.dotSuffix,
     scale: null,
     baseOctave: 4,
     pending: [],
+    lowerSigns: 0,
+    upperSigns: 0,
   };
   const marked: { note: SongNote; marks: Mark[] }[] = [];
   let keyGiven: { tonic: number; mode: 'major' | 'minor' } | null = null;
@@ -89,8 +100,14 @@ export function parseText(text: string, mode: TextMode, opts: { sa?: number } = 
 
   lines.forEach((raw, i) => {
     const lineNo = i + 1;
-    const line = raw.replace(/\t/g, ' ');
+    let line = raw.replace(/\t/g, ' ');
     if (stoppedAt) return;
+    const stamp = TIMESTAMP.exec(line);
+    if (stamp && !DIRECTIVE.test(line)) {
+      // Where this line is played in the video: kept as a section so it's easy to find.
+      line = line.slice(stamp[0].length);
+      if (!skippingPart) song.sections.push({ name: stamp[1], start: t });
+    }
     if (!line.trim()) {
       prevWasNotes = false;
       return;
@@ -202,7 +219,7 @@ export function parseText(text: string, mode: TextMode, opts: { sa?: number } = 
     const parsed = parseLine(line, ctx, unit);
     if (!parsed) {
       // A note to the reader in brackets, or a line of symbols: not lyrics.
-      if (/^\s*\(.*\)\s*$/.test(line) || !/[A-Za-z\u0900-\u097F]{2}/.test(line)) return;
+      if (/^\s*[({].*[)}]\s*$/.test(line) || !/[A-Za-z\u0900-\u097F]{2}/.test(line)) return;
       skippedLines.push(lineNo);
       // Words right under a line of notes belong to it; otherwise they introduce the next line.
       lyrics.push({ start: prevWasNotes ? lastNoteStart : t, text: line.trim() });
@@ -241,7 +258,7 @@ export function parseText(text: string, mode: TextMode, opts: { sa?: number } = 
     const s0 = stoppedAt as { line: number; text: string };
     warnings.unshift({ line: s0.line, message: `A second version starts at line ${s0.line}; only the first one plays. To use the other, delete the first.` });
   }
-  if (mode === 'sargam') resolveMarks(marked, ctx.pending);
+  if (mode === 'sargam') resolveOctaves(marked, ctx);
   song.notes = mergeRests(notes);
   song.lyrics = lyrics.length ? lyrics : undefined;
   alignPickup(song, pickup ?? firstBarAt);
@@ -312,6 +329,8 @@ function parseLine(line0: string, ctx: Ctx, unit: number): { events: Ev[]; unkno
       // (n.), the first dot might be one too ("p.."); the melody decides (¤).
       .replace(/(\S?)(\.{2,})/g, (_, before: string, dots: string) =>
         `${before}${ctx.dotSuffix && /[a-zA-Z]/.test(before) ? '¤' : ''} ${'-'.repeat(Math.max(1, Math.round(dots.length / 2)))} `)
+      // "Dh^^Pa": carets in a row hold the note, like dots.
+      .replace(/\^{2,}/g, (c) => ` ${'-'.repeat(Math.max(1, Math.round(c.length / 2)))} `)
       .replace(/[‘’`´“”"']/g, '’')
       .replace(/~/g, '') // a glide (meend) between two notes
       // A comma right before a single-letter note marks the lower octave (,D); otherwise it separates.
@@ -405,7 +424,7 @@ const SYLLABLE_PC: Record<string, number> = { sa: 0, re: 2, ri: 2, ga: 4, ma: 5,
 
 /**
  * Reads one sargam token, which may hold several notes run together ("MPD", "RgR", "S’NS’N", ",D,NSRgM").
- * Apostrophes are left as marks for resolveMarks(); everything else becomes a pitch here.
+ * Apostrophes are left as marks for resolveOctaves(); everything else becomes a pitch here.
  */
 function scanSargam(tok0: string, ctx: Ctx, unit: number): Ev[] | null {
   if (/^-+$/.test(tok0)) return [{ kind: 'hold', dur: tok0.length * unit }];
@@ -430,16 +449,21 @@ function scanSargam(tok0: string, ctx: Ctx, unit: number): Ev[] | null {
     } else if (c === ',' || (c === '.' && (!lastNote() || (noteAhead && !ctx.dotSuffix)))) {
       // Lower octave for the next note (,D or .P) …
       prefix -= 1;
+      ctx.lowerSigns++;
     } else if (c === '.') {
       // … or for the note just written (P. or n.d.).
       lastNote()!.midi -= 12;
+      ctx.lowerSigns++;
     } else if (c === '*' || c === '^') {
+      ctx.upperSigns++;
       if (lastNote() && !noteAhead) lastNote()!.midi += 12;
       else prefix += 1;
     } else if (c === '̣' || c === '̇') {
       const n = lastNote();
       if (!n) return null;
       n.midi += c === '̣' ? -12 : 12;
+      if (c === '̣') ctx.lowerSigns++;
+      else ctx.upperSigns++;
     } else {
       const m = NOTE_AT.exec(tok.slice(i));
       if (!m) return null;
@@ -447,6 +471,10 @@ function scanSargam(tok0: string, ctx: Ctx, unit: number): Ev[] | null {
       if (pc === null) return null;
       let acc = 0;
       if (m[2]) acc = /t|#/i.test(m[2]) ? 1 : -1;
+      else if (ctx.tivraCapitalMa && m[1] === 'Ma') {
+        acc = 1;
+        if (tok[i + 2] === '’') i++; // "Ma’" is this writer's tivra sign, not an octave mark
+      }
       items.push({ kind: 'note', midi: ctx.sa + pc + acc + prefix * 12 });
       prefix = 0;
       i += m[0].length;
@@ -457,13 +485,17 @@ function scanSargam(tok0: string, ctx: Ctx, unit: number): Ev[] | null {
   const count = items.filter((x) => x.kind === 'note').length;
   if (!count) return null;
   // One note fills the beat; notes run together are half a beat each. Dashes/slashes apply to the last.
+  // Three run together that come back to the first ("NiSaNi", "PaDhPa") are an ornament: two quick
+  // grace notes landing on the last.
+  const ns = items.filter((x) => x.kind === 'note') as { midi: number }[];
+  const ornament = count === 3 && ns[0].midi === ns[2].midi && ns[1].midi !== ns[0].midi;
   const each = count === 1 ? unit : unit / 2;
   const evs: Ev[] = [];
   let seen = 0;
   for (const it of items) {
     if (it.kind === 'mark') { ctx.pending.push(it.mark); continue; }
     seen++;
-    let dur = each;
+    let dur = ornament ? (seen === 3 ? unit : unit / 4) : each;
     if (seen === count) dur = (dur + tail[1].length * unit) / Math.pow(2, tail[2].length);
     evs.push({ kind: 'note', midi: it.midi, dur, marks: ctx.pending });
     ctx.pending = [];
@@ -507,6 +539,28 @@ function lowercaseSargam(lines: string[]) {
   }
   out.dotSuffix = dotAfter > dotBefore;
   return out;
+}
+
+/**
+ * Writers who capitalise syllables (Sa Re Ga Pa) but write "ma" in lowercase use the case to tell
+ * shuddha ma from tivra Ma ("maGamaRe … GaMa’PaMa’Pa").
+ */
+function syllableCase(lines: string[]): boolean {
+  let lowerMa = 0, capital = 0, lowercase = 0;
+  for (const line of lines) {
+    if (DIRECTIVE.test(line)) continue;
+    for (const tok of line.replace(TIMESTAMP, '').split(/[\s|()~,…\-–—.^’‘'`*]+/)) {
+      // Only tokens made purely of syllables, so words don't count.
+      if (!/^(?:dha|dh|sa|re|ri|ga|ma|pa|da|ni)+$/i.test(tok)) continue;
+      for (const [syl] of tok.matchAll(/dha|dh|sa|re|ri|ga|ma|pa|da|ni/gi)) {
+        if (syl === 'ma') lowerMa++;
+        else if (/^ma$/i.test(syl)) continue;
+        else if (syl[0] === syl[0].toUpperCase()) capital++;
+        else lowercase++;
+      }
+    }
+  }
+  return lowerMa > 0 && capital >= 4 && capital >= 3 * lowercase;
 }
 
 /**
@@ -564,18 +618,29 @@ export function parseSwaraSet(val: string): { scale: Record<string, number>; lab
 }
 
 /**
- * Decides what each apostrophe means. "S’" (at the end) is the upper octave; "’N" (at the start) is
+ * Decides which octave each note is in. "S’" (at the end) is the upper octave; "’N" (at the start) is
  * usually the lower octave; between two notes ("S’N") it could be either. Picks the readings that give
  * the smoothest melody overall, since tunes mostly move by small steps.
+ *
+ * Writers who mark no octaves at all ("Dh NiSaNi", "maGaReSaNi") leave every note's octave to the
+ * reader: those notes may move up or down an octave when that makes the melody much smoother.
  */
-function resolveMarks(seq: { note: SongNote; marks: Mark[] }[], trailing: Mark[]) {
+function resolveOctaves(seq: { note: SongNote; marks: Mark[] }[], ctx: Ctx) {
   const n = seq.length;
-  if (!n || (!seq.some((s) => s.marks.length) && !trailing.length)) return;
+  const trailing = ctx.pending;
+  const all = [...seq.flatMap((s) => s.marks), ...trailing];
+  if (!n) return;
+  const usesLead = all.includes('lead'), usesTrail = all.includes('trail');
+  // Unmarked notes: fixed when the writer marks lower notes; may only go down when they mark upper ones.
+  const upperMarks = ctx.upperSigns + all.filter((m) => m === 'trail' || m === 'mid').length;
+  const marksLower = ctx.lowerSigns > 0 || usesLead || all.includes('dot') || ctx.upperIsTaar;
+  const FREE = 3; // cost of moving an unmarked note out of the middle octave
+  const free = marksLower ? [0] : upperMarks >= 3 ? [0, -12] : [0, -12, 12];
+  if (!all.length && free.length === 1) return;
+
   type Combo = { prev: number; next: number; cost: number };
   // The writer's habit decides first: never "’N" → every mark is "S’" (upper); never "S’" → every mark is
   // "’N" (lower). Only texts that use both need the melody to decide.
-  const all = [...seq.flatMap((s) => s.marks), ...trailing];
-  const usesLead = all.includes('lead'), usesTrail = all.includes('trail');
   const up = { prev: 12, next: 0, cost: 0 }, down = { prev: 0, next: -12, cost: 0 };
   const OPTIONS: Record<Mark, Combo[]> = {
     trail: [up],
@@ -591,28 +656,34 @@ function resolveMarks(seq: { note: SongNote; marks: Mark[] }[], trailing: Mark[]
     }
     return combos;
   });
+  const shifts = seq.map((s, i) => (s.marks.length || (i + 1 < n ? seq[i + 1].marks : trailing).length ? [0] : free));
   const base = seq.map((s) => s.note.midi!);
-  const pitch = (i: number, a: number, b: number) => base[i] + gaps[i][a].next + gaps[i + 1][b].prev;
+  const pitch = (i: number, a: number, b: number, k: number) => base[i] + gaps[i][a].next + gaps[i + 1][b].prev + shifts[i][k];
+  const own = (i: number, b: number, k: number) => gaps[i + 1][b].cost + (shifts[i][k] ? FREE : 0);
   const leap = (x: number, y: number) => {
     const d = Math.abs(x - y);
     return d + 2 * Math.max(0, d - 7) + 4 * Math.max(0, d - 12);
   };
-  // DP over notes; state = (choice for the gap before note i, choice for the gap after it).
+  // DP over notes; state = (choice for the gap before note i, the gap after it, its own shift).
   let dp = new Map<string, number>();
   const back: Map<string, string>[] = [];
   for (let a = 0; a < gaps[0].length; a++) {
-    for (let b = 0; b < gaps[1].length; b++) dp.set(`${a},${b}`, gaps[0][a].cost + gaps[1][b].cost);
+    for (let b = 0; b < gaps[1].length; b++) {
+      for (let k = 0; k < shifts[0].length; k++) dp.set(`${a},${b},${k}`, gaps[0][a].cost + own(0, b, k));
+    }
   }
   for (let i = 1; i < n; i++) {
     const next = new Map<string, number>();
     const from = new Map<string, string>();
     for (const [key, cost0] of dp) {
-      const [a, b] = key.split(',').map(Number);
-      const p0 = pitch(i - 1, a, b);
+      const [a, b, k0] = key.split(',').map(Number);
+      const p0 = pitch(i - 1, a, b, k0);
       for (let c = 0; c < gaps[i + 1].length; c++) {
-        const cost = cost0 + gaps[i + 1][c].cost + leap(p0, pitch(i, b, c));
-        const k = `${b},${c}`;
-        if (!next.has(k) || cost < next.get(k)!) { next.set(k, cost); from.set(k, key); }
+        for (let k = 0; k < shifts[i].length; k++) {
+          const cost = cost0 + own(i, c, k) + leap(p0, pitch(i, b, c, k));
+          const nk = `${b},${c},${k}`;
+          if (!next.has(nk) || cost < next.get(nk)!) { next.set(nk, cost); from.set(nk, key); }
+        }
       }
     }
     back.push(from);
@@ -620,13 +691,10 @@ function resolveMarks(seq: { note: SongNote; marks: Mark[] }[], trailing: Mark[]
   }
   let bestKey = '';
   for (const [k, v] of dp) if (!bestKey || v < dp.get(bestKey)!) bestKey = k;
-  const path: number[] = new Array(n + 1);
   let key = bestKey;
   for (let i = n - 1; i >= 0; i--) {
-    const [a, b] = key.split(',').map(Number);
-    path[i] = a;
-    path[i + 1] = b;
+    const [a, b, k] = key.split(',').map(Number);
+    seq[i].note.midi = pitch(i, a, b, k);
     if (i > 0) key = back[i - 1].get(key)!;
   }
-  for (let i = 0; i < n; i++) seq[i].note.midi = pitch(i, path[i], path[i + 1]);
 }
