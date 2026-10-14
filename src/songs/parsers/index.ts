@@ -4,6 +4,7 @@ import { looksLikeAbc, parseAbc } from './abc';
 import { parseMidi } from './midi';
 import { parseMusicXml } from './musicxml';
 import { parseText } from './text';
+import { mxlToText } from './zip';
 
 export { parseAbc, parseMidi, parseMusicXml, parseText };
 
@@ -45,7 +46,7 @@ export function parseSongText(text: string, format: TextFormat | 'auto' = 'auto'
 export async function parseSongFile(file: File): Promise<ParseResult & { text?: string }> {
   const name = file.name.toLowerCase();
   if (/\.(mid|midi)$/.test(name)) return parseMidi(await file.arrayBuffer(), file.name);
-  if (/\.mxl$/.test(name)) throw new Error('Compressed .mxl files aren\'t supported yet. In MuseScore, export as "Uncompressed MusicXML (.musicxml)".');
+  if (/\.mxl$/.test(name)) return parseMusicXml(await mxlToText(await file.arrayBuffer()));
   const text = await file.text();
   if (/\.(musicxml|xml)$/.test(name) || /<score-partwise|<score-timewise/.test(text.slice(0, 2000))) return parseMusicXml(text);
   return { ...parseSongText(text), text };

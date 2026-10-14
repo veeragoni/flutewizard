@@ -91,7 +91,7 @@ export function RecordOwn() {
     >
       <div class="own-intro">
         <div>
-          <p><b>{count}</b> of {notes.length} notes recorded{inst.keyOptions.length > 1 ? ` for your ${inst.keyOptions.find((k) => k.root === r)?.label}` : ''}. Notes you skip are filled in from the nearest recording.</p>
+          <p><b>{count}</b> of {notes.length} notes recorded{inst.keyOptions.length > 1 ? ` for your ${inst.keyOptions.find((k) => k.root === r)?.label}` : ''}. Notes more than two semitones from one you recorded use the app’s own recordings.</p>
           <ul class="help-list">
             <li>Quiet room, flute about 30 cm from the microphone. Turn off noise suppression if your device has it.</li>
             <li>Press <b>Record</b>, then play the note steadily for 2–3 seconds with your normal tone. It stops by itself.</li>

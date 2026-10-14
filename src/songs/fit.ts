@@ -2,15 +2,24 @@ import type { Instrument } from '../instruments';
 import { fitOctave, transposeSong, type Song } from '../music/song';
 
 /**
- * The song as it will sound on this flute: Sargam songs move to the flute's Sa, then the
- * song's saved transposition plus any extra, then octaves so it sits inside the range.
+ * The song as it will sound on this flute: on a bansuri, Sargam songs move to the flute's Sa and
+ * other songs move their home note to Sa (the nearest way), the way bansuri players read Western tunes.
+ * Then the song's saved transposition plus any extra, then octaves so it sits inside the range.
  */
 export function fitSong(s: Song, inst: Instrument, root: number, extra = 0): Song {
   let semis = s.transpose ?? 0;
-  if (s.source?.format === 'sargam' && inst.naming === 'sargam') semis += root - (s.sa ?? 60);
+  if (inst.naming === 'sargam') {
+    if (s.source?.format === 'sargam') semis += root - (s.sa ?? 60);
+    else {
+      const d = (((root - s.tonic) % 12) + 12) % 12;
+      semis += d > 6 ? d - 12 : d;
+    }
+  }
   let moved = transposeSong(s, semis + extra);
   const [lo, hi] = inst.range(root);
-  moved = transposeSong(moved, fitOctave(moved, lo, hi));
+  // Bansuri and whistle tunes sit best in the lower, home octave (around Pa/the fifth).
+  const center = inst.id === 'bansuri' || inst.id === 'whistle' ? root + 7 : undefined;
+  moved = transposeSong(moved, fitOctave(moved, lo, hi, center));
   return moved;
 }
 

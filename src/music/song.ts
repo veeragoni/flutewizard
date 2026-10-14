@@ -86,9 +86,13 @@ export function pitchRange(song: Song): [number, number] | null {
  * Octave shift that best fits the song inside [lo, hi]; returns a multiple of 12.
  * Prefers no shift when the song already fits.
  */
-export function fitOctave(song: Song, lo: number, hi: number): number {
+export function fitOctave(song: Song, lo: number, hi: number, center?: number): number {
   const r = pitchRange(song);
   if (!r) return 0;
+  // When several octaves fit, keep the written one, or the one nearest `center` if given.
+  const pitches = song.notes.filter((n) => n.midi !== null).map((n) => n.midi!).sort((a, b) => a - b);
+  const median = pitches[Math.floor(pitches.length / 2)];
+  const pref = (s: number) => (center === undefined ? Math.abs(s) : Math.abs(median + s - center));
   let best = 0, bestOut = Infinity;
   for (let s = -36; s <= 36; s += 12) {
     let out = 0;
@@ -98,7 +102,7 @@ export function fitOctave(song: Song, lo: number, hi: number): number {
       if (m < lo) out += lo - m;
       else if (m > hi) out += m - hi;
     }
-    if (out < bestOut || (out === bestOut && Math.abs(s) < Math.abs(best))) {
+    if (out < bestOut || (out === bestOut && pref(s) < pref(best))) {
       best = s;
       bestOut = out;
     }

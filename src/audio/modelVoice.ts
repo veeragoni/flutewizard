@@ -1,4 +1,5 @@
 import { engine, holdAt } from './engine';
+import { at } from '../base';
 import { FluteVoice, type NoteOptions, type Timbre } from './voice';
 import { loadSampleSet, loadSamplesFromBlobs, SampleVoice, type SampleSetManifest } from './sampleVoice';
 import { customNotes, customVersion } from './customSamples';
@@ -276,9 +277,9 @@ export class HybridVoice implements Voice {
     const id = this.timbre.sampleSet;
     if (soundSource === 'modelled' || !id || this.sampler?.setId === id || this.loadingSet === id) return;
     this.loadingSet = id;
-    fetch(`/samples/${id}.json`)
+    fetch(at(`samples/${id}.json`))
       .then((r) => r.json() as Promise<SampleSetManifest>)
-      .then((m) => loadSampleSet(m, '/samples/'))
+      .then((m) => loadSampleSet(m, at('samples/')))
       .then((samples) => {
         if (this.timbre.sampleSet !== id) return;
         this.sampler?.dispose();
@@ -305,30 +306,50 @@ export class HybridVoice implements Voice {
     });
   }
 
+  /** The flute's own sound: recordings when chosen and loaded, otherwise the model. */
   private get v(): Voice {
-    if (soundSource === 'mine' && this.mine && this.mine.setId === 'mine:' + this.timbre.customSet) return this.mine;
     if (soundSource !== 'modelled' && this.sampler && this.sampler.setId === this.timbre.sampleSet) return this.sampler;
     return this.model ?? this.synth;
   }
 
+  /**
+   * The voice for one note. "My flute" uses the player's recordings for notes within two semitones
+   * of one they recorded (stretching further sounds artificial) and the flute's own sound elsewhere.
+   */
+  private voiceFor(midi: number): Voice {
+    const mine = this.mine;
+    if (soundSource === 'mine' && mine && mine.setId === 'mine:' + this.timbre.customSet && mine.distance(midi) <= 2) return mine;
+    return this.v;
+  }
+
+  /** The voice that played the latest note, so bends and note-offs reach it. */
+  private cur: Voice | null = null;
+  private use(midi: number, when?: number): Voice {
+    const nv = this.voiceFor(midi);
+    if (this.cur && this.cur !== nv && this.cur.isSounding) this.cur.noteOff(when);
+    this.cur = nv;
+    return nv;
+  }
+  private get active(): Voice { return this.cur ?? this.v; }
+
   setTimbre(t: Timbre) {
-    const prev = this.v;
+    const prev = this.active;
     this.timbre = t;
     this.synth.setTimbre(t);
     if (this.model && t.model) this.model.setTimbre(t);
     else if (!this.model && t.model && moduleLoaded) this.model = new ModelVoiceImpl(t, this.dest);
     this.sampler?.setTimbre(t);
     this.mine?.setTimbre(t);
-    if (prev !== this.v) prev.stop();
+    if (prev !== this.v && prev !== this.mine) prev.stop();
     this.refresh();
   }
-  get isSounding() { return this.v.isSounding; }
-  noteOn(midi: number, when?: number, opts?: NoteOptions) { this.v.noteOn(midi, when, opts); }
-  noteOff(when?: number) { this.v.noteOff(when); }
-  play(midi: number, when: number, dur: number, opts?: NoteOptions) { this.v.play(midi, when, dur, opts); }
-  setBend(cents: number, glideTime?: number) { this.v.setBend(cents, glideTime); }
-  setVibrato(amount: number) { this.v.setVibrato(amount); }
-  setBreath(breath: number) { this.v.setBreath(breath); }
+  get isSounding() { return this.active.isSounding; }
+  noteOn(midi: number, when?: number, opts?: NoteOptions) { this.use(midi, when).noteOn(midi, when, opts); }
+  noteOff(when?: number) { this.active.noteOff(when); }
+  play(midi: number, when: number, dur: number, opts?: NoteOptions) { this.use(midi, when).play(midi, when, dur, opts); }
+  setBend(cents: number, glideTime?: number) { this.active.setBend(cents, glideTime); }
+  setVibrato(amount: number) { this.active.setVibrato(amount); }
+  setBreath(breath: number) { this.active.setBreath(breath); }
   stop() { this.synth.stop(); this.model?.stop(); this.sampler?.stop(); this.mine?.stop(); }
   dispose() { voices.delete(this); this.synth.dispose(); this.model?.dispose(); this.sampler?.dispose(); this.mine?.dispose(); }
 }

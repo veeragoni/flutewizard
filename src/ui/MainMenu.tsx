@@ -1,4 +1,5 @@
 import { panel, prefs, setPrefs, songsTab, editorSongId, type Panel } from '../state';
+import { at } from '../base';
 import { IconChart, IconClose, IconEdit, IconHelp, IconMic, IconMusic, IconTuner } from './icons';
 
 export function MainMenu() {
@@ -15,9 +16,9 @@ export function MainMenu() {
         <button onClick={() => { songsTab.value = 'library'; go('songs'); }}><IconMusic size={18} /> Songs &amp; recordings</button>
         <button onClick={() => { editorSongId.value = null; go('editor'); }}><IconEdit size={18} /> Write or import a song</button>
         <button onClick={() => go('own')}><IconMic size={18} /> Record your own flute</button>
-        <a href="/tuner/"><IconTuner size={18} /> Flute tuner</a>
-        <a href="/fingering-charts/"><IconChart size={18} /> Fingering charts</a>
-        <a href="/songs/"><IconMusic size={18} /> Song library</a>
+        <a href={at('/tuner/')}><IconTuner size={18} /> Flute tuner</a>
+        <a href={at('/fingering-charts/')}><IconChart size={18} /> Fingering charts</a>
+        <a href={at('/songs/')}><IconMusic size={18} /> Song library</a>
       </nav>
       <div class="menu-section">
         <h4>Settings</h4>

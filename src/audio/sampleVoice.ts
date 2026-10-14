@@ -148,6 +148,9 @@ export class SampleVoice implements Voice {
     return best;
   }
 
+  /** Semitones from `midi` to the closest recorded note. */
+  distance(midi: number): number { return Math.abs(this.nearest(midi).midi - midi); }
+
   setTimbre(t: Timbre) { this.timbre = t; }
   get isSounding() { return this.sounding && this.ctx.currentTime < this.soundingUntil + 0.05; }
 

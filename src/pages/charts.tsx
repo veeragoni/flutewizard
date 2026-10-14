@@ -1,4 +1,5 @@
 import { render } from 'preact';
+import { at } from '../base';
 import { useRef, useState } from 'preact/hooks';
 import { INSTRUMENT_ORDER, INSTRUMENTS, rootFor, timbreFor, type InstrumentId } from '../instruments';
 import { noteName, sargamName, SARGAM_LONG } from '../music/theory';
@@ -77,7 +78,7 @@ function Charts() {
       <section class="article">
         <h2>Reading the chart</h2>
         <p>The mouthpiece is at the top. {inst.hasThumbHole ? 'The small hole to the left is the thumb hole on the back. ' : ''}{inst.id === 'concert' ? 'The large circles are the six main keys (left hand on top, right hand below). Small keys at the side are the thumb keys, the G♯ key, trill keys, the E♭ key and the foot-joint rollers.' : 'Holes are grouped by hand: top hand above the gap, bottom hand below.'} A + next to the diagram means overblow (faster air) for the second register.</p>
-        <p>Sources: the Woodwind Fingering Guide, Yamaha and Dolmetsch charts, Grey Larsen&rsquo;s whistle chart and bansuri teachers&rsquo; charts. See <a href="/credits/">credits</a>.</p>
+        <p>Sources: the Woodwind Fingering Guide, Yamaha and Dolmetsch charts, Grey Larsen&rsquo;s whistle chart and bansuri teachers&rsquo; charts. See <a href={at('/credits/')}>credits</a>.</p>
       </section>
     </PageShell>
   );
