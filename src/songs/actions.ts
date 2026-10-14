@@ -11,9 +11,19 @@ function trackSong(song: Song | null, how: string) {
   if (song) track(`song/${how}/${song.builtin ? song.id.replace(/^builtin-/, '') : 'own'}`);
 }
 
+// Set when a song turned the band off by default, so the next song gets it back.
+let bandOffBySong = false;
+
 /** Load a song into the player (doesn't start it). */
 export function loadSong(song: Song) {
   songKeys.value = song.keys ?? null;
+  if (song.band === false && prefs.value.bandOn) {
+    setPrefs({ bandOn: false });
+    bandOffBySong = true;
+  } else if (song.band !== false && bandOffBySong) {
+    if (!prefs.value.bandOn) setPrefs({ bandOn: true });
+    bandOffBySong = false;
+  }
   currentSourceSong.value = song;
   userTranspose.value = 0;
   tempoBpm.value = song.bpm;
@@ -24,12 +34,16 @@ export function closeSong() {
   transport.stop();
   currentSourceSong.value = null;
   songKeys.value = null;
+  if (bandOffBySong) {
+    if (!prefs.value.bandOn) setPrefs({ bandOn: true });
+    bandOffBySong = false;
+  }
 }
 
 /** Load and start, in listen mode (the flute plays it for you). */
 export function listen(song: Song) {
   ensureAudio();
-  if (currentSourceSong.value?.id !== song.id) loadSong(song);
+  if (currentSourceSong.value !== song) loadSong(song);
   setPrefs({ playMode: 'listen' });
   trackSong(song, 'listen');
   panel.value = null;
@@ -39,7 +53,7 @@ export function listen(song: Song) {
 /** Load and start in play-along mode. */
 export function playAlong(song: Song) {
   ensureAudio();
-  if (currentSourceSong.value?.id !== song.id) loadSong(song);
+  if (currentSourceSong.value !== song) loadSong(song);
   if (prefs.value.playMode === 'listen') setPrefs({ playMode: 'along' });
   trackSong(song, prefs.value.playMode);
   panel.value = null;

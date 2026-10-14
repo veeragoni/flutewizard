@@ -5,7 +5,7 @@ import { setSoundSource } from './audio/modelVoice';
 import { DEFAULT_BAND, transport, type BandSettings, type PlayMode } from './audio/transport';
 import type { Song } from './music/song';
 import { fitSong } from './songs/fit';
-import { loadJSON, loadMySongs, saveJSON } from './songs/storage';
+import { loadEdits, loadJSON, loadMySongs, saveJSON } from './songs/storage';
 import type { DroneKind } from './audio/drone';
 
 export type InputMode = 'keyboard' | 'fingers' | 'mic';
@@ -94,6 +94,8 @@ export const octaveShift = signal(0);
 /* ─────────────────────────────── Songs ─────────────────────────────── */
 
 export const mySongs = signal<Song[]>(loadMySongs());
+/** Built-in songs the player has corrected, by id. */
+export const builtinEdits = signal<Record<string, Song>>(loadEdits());
 /** The song as written (before fitting to the instrument). */
 export const currentSourceSong = signal<Song | null>(null);
 /** User transposition on top of the automatic fit, in semitones. */

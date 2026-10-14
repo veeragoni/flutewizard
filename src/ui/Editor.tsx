@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { editorSongId, instrument, mySongs, panel, prefs, root, setPrefs, songsTab, naming, showToast } from '../state';
+import { builtinEdits, currentSourceSong, editorSongId, instrument, mySongs, panel, prefs, root, setPrefs, songsTab, naming, showToast, tempoBpm } from '../state';
 import { builtinById } from '../songs/library';
-import { upsertSong } from '../songs/storage';
+import { resetEdit, saveEdit, upsertSong } from '../songs/storage';
 import { detectTextFormat, parseSongText, songToText, type TextFormat } from '../songs/parsers';
 import { bestTranspose, fitSong, hardNotes } from '../songs/fit';
 import { playAlong } from '../songs/actions';
@@ -43,7 +43,20 @@ interface Draft {
   drone?: boolean;
 }
 
-function draftFor(id: string | null): { draft: Draft; fromBuiltin: boolean } {
+// Resetting loses the player's changes, so ask (in-page, not a browser dialog).
+let resetArmed = false;
+function confirmReset(): boolean {
+  if (resetArmed) {
+    resetArmed = false;
+    return true;
+  }
+  resetArmed = true;
+  showToast('Press "Reset to original" again to undo your changes.');
+  setTimeout(() => (resetArmed = false), 4000);
+  return false;
+}
+
+function draftFor(id: string | null): { draft: Draft; fromBuiltin: boolean; base?: Song } {
   const fresh = (): Draft => ({
     id: newId(),
     text: naming.value === 'sargam' ? SARGAM_STARTER : STARTER,
@@ -55,7 +68,8 @@ function draftFor(id: string | null): { draft: Draft; fromBuiltin: boolean } {
   if (!id) return { draft: fresh(), fromBuiltin: false };
   const mine = mySongs.value.find((s) => s.id === id);
   const built = mine ? null : builtinById(id);
-  const s = mine ?? built;
+  // A built-in song opens as the player's corrected version, if they made one.
+  const s = mine ?? (built && (builtinEdits.value[built.id] ?? built));
   if (!s) return { draft: fresh(), fromBuiltin: false };
   let text = s.source?.text ?? '';
   let format: FormatChoice = (s.source?.format as TextFormat) ?? 'auto';
@@ -66,15 +80,19 @@ function draftFor(id: string | null): { draft: Draft; fromBuiltin: boolean } {
     format = f;
   }
   return {
-    draft: { id: built ? newId() : s.id, text, format, groove: s.groove ?? 'auto', transpose: s.transpose ?? 0, tags: s.tags ?? [], drone: s.drone },
+    draft: { id: s.id, text, format, groove: s.groove ?? 'auto', transpose: s.transpose ?? 0, tags: s.tags ?? [], drone: s.drone },
     fromBuiltin: !!built,
+    base: built ?? undefined,
   };
 }
 
 export function Editor() {
   const initial = useMemo(() => draftFor(editorSongId.value), []);
   const [draft, setDraft] = useState<Draft>(initial.draft);
-  const [saved, setSaved] = useState<'saved' | 'dirty' | 'new'>(editorSongId.value && !initial.fromBuiltin ? 'saved' : 'new');
+  // Built-in songs are edited in place (saved as the player's version); new songs wait for Save.
+  const [saved, setSaved] = useState<'saved' | 'dirty' | 'new'>(editorSongId.value ? 'saved' : 'new');
+  const base = initial.base;
+  const edited = !!base && !!builtinEdits.value[base.id];
   const [showHelp, setShowHelp] = useState(false);
   const ta = useRef<HTMLTextAreaElement>(null);
   const inst = instrument.value;
@@ -90,6 +108,8 @@ export function Editor() {
   }, [draft.text, format]);
 
   const song: Song = useMemo(() => ({
+    // A corrected built-in keeps its card details and its drone, metronome and flute settings.
+    ...(base ? { blurb: base.blurb, droneKind: base.droneKind, click: base.click, band: base.band, keys: base.keys, builtin: true } : {}),
     ...result.song,
     id: draft.id,
     groove: draft.groove === 'auto' ? undefined : draft.groove,
@@ -103,11 +123,25 @@ export function Editor() {
   const suggestion = useMemo(() => (hard > 0 ? bestTranspose(song, inst, r) : null), [song, inst, r, hard]);
   const hasNotes = song.notes.some((n) => n.midi !== null);
 
-  // Auto-save songs that already live in My songs.
+  /** Keep it: corrections to a built-in song replace it for this player; anything else goes to My songs. */
+  const store = (s: Song) => {
+    if (base) builtinEdits.value = saveEdit(builtinEdits.value, s);
+    else mySongs.value = upsertSong(mySongs.value, s);
+    // If it's the song in the player, play the new version.
+    if (currentSourceSong.value?.id === s.id) {
+      const kept = base ? builtinEdits.value[s.id] : mySongs.value.find((x) => x.id === s.id);
+      if (kept) {
+        currentSourceSong.value = kept;
+        tempoBpm.value = kept.bpm;
+      }
+    }
+  };
+
+  // Auto-save songs that already live in My songs, and corrections to built-in ones.
   useEffect(() => {
     if (saved !== 'dirty' || !hasNotes) return;
     const t = setTimeout(() => {
-      mySongs.value = upsertSong(mySongs.value, song);
+      store(song);
       setSaved('saved');
     }, 600);
     return () => clearTimeout(t);
@@ -124,8 +158,35 @@ export function Editor() {
       return;
     }
     if (saved === 'new') track(`song/written/${song.source?.format ?? 'text'}`);
-    mySongs.value = upsertSong(mySongs.value, song);
+    store(song);
     setSaved('saved');
+  };
+
+  const playNow = () => {
+    if (saved !== 'saved') save();
+    // Play the version just saved (the stored object), so later edits reload it.
+    const kept = base ? builtinEdits.value[song.id] ?? base : mySongs.value.find((x) => x.id === song.id) ?? song;
+    playAlong(kept);
+  };
+
+  const resetToOriginal = () => {
+    if (!base || !confirmReset()) return;
+    builtinEdits.value = resetEdit(builtinEdits.value, base.id);
+    if (currentSourceSong.value?.id === base.id) {
+      currentSourceSong.value = base;
+      tempoBpm.value = base.bpm;
+    }
+    const d = draftFor(base.id).draft;
+    setDraft(d);
+    setSaved('saved');
+    showToast('Back to the original notes.');
+  };
+
+  const copyToMine = () => {
+    if (!hasNotes) return;
+    const copy = { ...song, id: newId(), builtin: false, edited: false, title: song.title + ' (my copy)' };
+    mySongs.value = upsertSong(mySongs.value, copy);
+    showToast(`Saved "${copy.title}" in My songs.`);
   };
 
   const jumpToLine = (line: number) => {
@@ -149,8 +210,10 @@ export function Editor() {
       actions={
         <>
           <button class="ghost-btn small" onClick={() => { songsTab.value = 'mine'; panel.value = 'songs'; }}><IconBack size={14} /> My songs</button>
-          <button class="ghost-btn small" disabled={!hasNotes} onClick={() => { if (saved !== 'saved') save(); playAlong(song); }}><IconPlay size={12} /> Play</button>
-          {saved === 'saved' ? <span class="saved-pill">Saved</span> : <button class="primary-btn small" onClick={save}>{initial.fromBuiltin ? 'Save a copy' : 'Save'}</button>}
+          {base && edited && <button class="ghost-btn small" onClick={resetToOriginal} title="Undo your changes to this song">Reset to original</button>}
+          {base && <button class="ghost-btn small" disabled={!hasNotes} onClick={copyToMine} title="Keep a separate copy in My songs">Copy to My songs</button>}
+          <button class="ghost-btn small" disabled={!hasNotes} onClick={playNow}><IconPlay size={12} /> Play</button>
+          {saved === 'saved' ? <span class="saved-pill">{base ? (edited ? 'Your version saved' : 'Original') : 'Saved'}</span> : base ? <span class="saved-pill">Saving…</span> : <button class="primary-btn small" onClick={save}>Save</button>}
         </>
       }
     >

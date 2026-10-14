@@ -36,6 +36,8 @@ export interface Song {
   sa?: number;
   source?: { format: ImportFormat; text: string };
   builtin?: boolean;
+  /** A built-in song the player has corrected: their version takes its place in the library. */
+  edited?: boolean;
   tags?: string[];
   /** Short description shown on the song card. */
   blurb?: string;
@@ -46,6 +48,8 @@ export interface Song {
   droneKind?: 'tanpura-pa' | 'tanpura-ma' | 'tanpura-ni' | 'shruti' | 'tonic';
   /** false: no metronome clicks, not even the count-in (the drone keeps time instead). */
   click?: boolean;
+  /** false: no backing band (drums, bass, strings) by default for this song. */
+  band?: boolean;
   /** The flute key this song is meant for, by flute (MIDI of Sa), used while it's loaded. */
   keys?: Partial<Record<'concert' | 'bansuri' | 'recorder' | 'whistle', number>>;
   /** Semitones the player chose to move the song by (saved with the song). */

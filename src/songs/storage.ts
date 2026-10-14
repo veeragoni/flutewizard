@@ -44,6 +44,33 @@ export function upsertSong(songs: Song[], song: Song): Song[] {
   return next;
 }
 
+const EDITS_KEY = 'flute.builtin-edits.v1';
+
+/** The player's corrected versions of built-in songs, by song id. */
+export function loadEdits(): Record<string, Song> {
+  const raw = safeGet(EDITS_KEY);
+  if (!raw) return {};
+  try {
+    const map = JSON.parse(raw) as Record<string, Song>;
+    return map && typeof map === 'object' ? Object.fromEntries(Object.entries(map).filter(([, s]) => s && Array.isArray(s.notes))) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveEdit(edits: Record<string, Song>, song: Song): Record<string, Song> {
+  const next = { ...edits, [song.id]: { ...song, builtin: true, edited: true, updatedAt: Date.now() } };
+  safeSet(EDITS_KEY, JSON.stringify(next));
+  return next;
+}
+
+export function resetEdit(edits: Record<string, Song>, id: string): Record<string, Song> {
+  const next = { ...edits };
+  delete next[id];
+  safeSet(EDITS_KEY, JSON.stringify(next));
+  return next;
+}
+
 export function deleteSong(songs: Song[], id: string): Song[] {
   const next = songs.filter((s) => s.id !== id);
   saveMySongs(next);

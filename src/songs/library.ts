@@ -16,6 +16,7 @@ interface Entry {
   drone?: boolean;
   droneKind?: Song['droneKind'];
   click?: boolean;
+  band?: boolean;
   keys?: Song['keys'];
   text: string;
 }
@@ -246,8 +247,8 @@ Sa' Ni Dha | Ni Dha Pa | Dha Pa Ma | Pa Ma Ga | Ma Ga Re | Ga Re Sa |`,
   },
   {
     id: 'bombay-theme', format: 'sargam', tags: ['Film', 'Bansuri'], groove: 'none', drone: true,
-    // A shruti box keeps time instead of a metronome; written for a C bansuri (Sa = C5).
-    droneKind: 'shruti', click: false, keys: { bansuri: 72 },
+    // Just the shruti box and the melody, no band; written for a C bansuri (Sa = C5).
+    droneKind: 'shruti', band: false, keys: { bansuri: 72 },
     blurb: 'A.R. Rahman’s much-loved theme from the film Bombay (1995), with its grace notes and timing, as played on a C bansuri in a YouTube lesson by Kishan’s Flute.',
     text: `Title: Bombay Theme
 Artist: A.R. Rahman
@@ -301,6 +302,7 @@ export function builtinSongs(): Song[] {
       drone: e.drone,
       droneKind: e.droneKind,
       click: e.click,
+      band: e.band,
       keys: e.keys,
     };
   });
@@ -309,4 +311,13 @@ export function builtinSongs(): Song[] {
 
 export function builtinById(id: string): Song | undefined {
   return builtinSongs().find((s) => s.id === id);
+}
+
+/** The library as this player sees it: their corrected version in place of each song they edited. */
+export function librarySongs(edits: Record<string, Song>): Song[] {
+  return builtinSongs().map((s) => edits[s.id] ?? s);
+}
+
+export function libraryById(id: string, edits: Record<string, Song>): Song | undefined {
+  return edits[id] ?? builtinById(id);
 }

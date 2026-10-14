@@ -1,8 +1,8 @@
 import { render } from 'preact';
 import { App } from './ui/App';
 import { INSTRUMENTS, type InstrumentId } from './instruments';
-import { setPrefs } from './state';
-import { builtinById } from './songs/library';
+import { builtinEdits, setPrefs } from './state';
+import { libraryById } from './songs/library';
 import { loadSong } from './songs/actions';
 import { at } from './base';
 import './styles.css';
@@ -13,7 +13,7 @@ const i = q.get('i') as InstrumentId | null;
 if (i && INSTRUMENTS[i]) setPrefs({ instrument: i });
 const s = q.get('song');
 if (s) {
-  const song = builtinById(s);
+  const song = libraryById(s, builtinEdits.value);
   if (song) loadSong(song);
 }
 if (i || s) history.replaceState(null, '', at(''));

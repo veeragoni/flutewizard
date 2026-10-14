@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { builtinSongs } from '../songs/library';
+import { librarySongs } from '../songs/library';
 import { closeSong, listen, loadSong, playAlong } from '../songs/actions';
-import { editorSongId, instrument, mySongs, panel, root, showToast, songsTab, currentSourceSong } from '../state';
+import { builtinEdits, editorSongId, instrument, mySongs, panel, root, showToast, songsTab, currentSourceSong } from '../state';
 import { deleteSong, upsertSong } from '../songs/storage';
 import { parseSongFile } from '../songs/parsers';
 import { download, extFor, takes, type Take } from '../audio/recorder';
@@ -43,7 +43,7 @@ export function SongsPanel() {
                 <input type="search" placeholder="Find a song…" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
                 <button class="ghost-btn" onClick={() => { closeSong(); panel.value = null; }}>Free play</button>
               </div>
-              <SongGrid songs={tab === 'library' ? builtinSongs() : mySongs.value} query={q} mine={tab === 'mine'} />
+              <SongGrid songs={tab === 'library' ? librarySongs(builtinEdits.value) : mySongs.value} query={q} mine={tab === 'mine'} />
             </>
           )}
         </div>
@@ -122,6 +122,7 @@ function SongCard({ song, mine }: { song: Song; mine: boolean }) {
         </div>
         {song.blurb && <p class="song-blurb">{song.blurb}</p>}
         <div class="tags">
+          {song.edited && <span class="tag on" title="You corrected this song's notes; Edit → Reset to original brings back the shipped version">Your version</span>}
           {(song.tags ?? []).map((t) => <span class="tag">{t}</span>)}
           {fit.missing > 0 && <span class="tag warn" title="Some notes have no fingering on this flute in this key">{fit.missing} hard notes</span>}
         </div>
@@ -138,7 +139,10 @@ function SongCard({ song, mine }: { song: Song; mine: boolean }) {
               ><IconTrash size={14} /></button>
             </>
           ) : (
-            <button class="ghost-btn small" onClick={() => { loadSong(song); panel.value = 'sheet'; }}>Notes</button>
+            <>
+              <button class="ghost-btn small" onClick={() => { loadSong(song); panel.value = 'sheet'; }}>Notes</button>
+              <button class="ghost-btn small" onClick={() => { editorSongId.value = song.id; panel.value = 'editor'; }} title="Correct the notes; your version replaces this one for you"><IconEdit size={14} /> Edit</button>
+            </>
           )}
           <span class="spacer" />
           <button class="icon-btn round" onClick={() => listen(song)} title="Listen"><IconHeadphones size={18} /></button>
