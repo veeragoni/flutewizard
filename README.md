@@ -35,21 +35,6 @@ npm run build    # production build in dist/ (pre-renders the song pages)
 
 It needs Node 20.19 or newer. Every push to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`.
 
-## Analytics
-
-Visits, pages, referrers, countries and devices are counted with **Cloudflare Web Analytics**, which uses no cookies, so no consent banner is needed. To turn it on:
-
-1. In Cloudflare: **Analytics & Logs → Web Analytics → Add a site**, enter `veeragoni.github.io`, and copy the token from the JavaScript snippet (the `"token": "…"` value).
-2. In GitHub: **Settings → Secrets and variables → Actions → Variables**, add `CF_BEACON_TOKEN` with that token, then re-run the Deploy workflow.
-
-**Optional usage events.** These are anonymous counts:
-- the flute picked
-- the play mode
-- built-in songs played (your own songs only as "own")
-- imports, recordings and *Find my Sa*
-
-Cloudflare can't count events, so they go to [GoatCounter](https://www.goatcounter.com/) when a `GOATCOUNTER_CODE` variable is set to your GoatCounter code. Without it, events are dropped. See `src/analytics.ts`.
-
 ## Writing songs
 
 Open **Menu → Write or import a song** and paste notes. The editor shows a live preview with fingerings and flags anything it couldn't read. *How to write* in the editor lists the notation. Examples:
