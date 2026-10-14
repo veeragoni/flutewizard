@@ -6,6 +6,7 @@ import { engine, ROOMS, type FxSettings, type RoomId } from '../audio/engine';
 import { GROOVES, playClick } from '../audio/backing';
 import { drone, DRONES, type DroneKind } from '../audio/drone';
 import { Recorder, MAX_SECONDS, takes } from '../audio/recorder';
+import { track } from '../analytics';
 import { ensureAudio } from '../play';
 import { barLength, notesByBar } from '../music/song';
 import { label } from './names';
@@ -244,6 +245,7 @@ async function stopRecording() {
   const res = await recorder.stop();
   recState.value = { on: false, elapsed: 0 };
   if (!res || res.seconds < 0.3) return;
+  track('recording');
   const song = currentSong.value;
   const n = (await takes.list()).length + 1;
   await takes.save({

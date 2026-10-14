@@ -11,6 +11,7 @@ import { keyLabel, noteName } from '../music/theory';
 import { FingeringDiagram } from './FingeringDiagram';
 import { label } from './names';
 import { Modal } from './Modal';
+import { track } from '../analytics';
 import { IconBack, IconPlay } from './icons';
 
 const STARTER = `Title: My song
@@ -122,6 +123,7 @@ export function Editor() {
       showToast('Add some notes first.');
       return;
     }
+    if (saved === 'new') track(`song/written/${song.source?.format ?? 'text'}`);
     mySongs.value = upsertSong(mySongs.value, song);
     setSaved('saved');
   };

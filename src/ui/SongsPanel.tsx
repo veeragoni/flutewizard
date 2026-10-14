@@ -10,6 +10,7 @@ import { keyLabel } from '../music/theory';
 import { IconDownload, IconEdit, IconHeadphones, IconPlay, IconPlus, IconTrash, IconUpload } from './icons';
 import { Modal } from './Modal';
 import { Artwork } from './Artwork';
+import { track } from '../analytics';
 
 export { Artwork };
 
@@ -62,6 +63,7 @@ function MyActions() {
         return;
       }
       mySongs.value = upsertSong(mySongs.value, res.song);
+      track(`import/${res.song.source?.format ?? 'file'}`);
       editorSongId.value = res.song.id;
       panel.value = 'editor';
       if (res.warnings.length) showToast(res.warnings[0].message);

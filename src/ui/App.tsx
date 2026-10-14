@@ -15,6 +15,7 @@ import { RecordOwn } from './RecordOwn';
 import { SideRail, SidePanels } from './SidePanels';
 import { MainMenu } from './MainMenu';
 import { Logo } from './Logo';
+import { track } from '../analytics';
 import { at } from '../base';
 import { transportState } from '../audio/transport';
 import type { ConcertKey } from '../instruments/types';
@@ -46,7 +47,10 @@ export function App() {
 
 function TopBar() {
   const p = prefs.value;
-  const pick = (id: InstrumentId) => setPrefs({ instrument: id });
+  const pick = (id: InstrumentId) => {
+    setPrefs({ instrument: id });
+    track(`flute/${id}`);
+  };
   return (
     <header class="topbar">
       <a class="brand" href={at('')}>

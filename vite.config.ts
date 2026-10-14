@@ -22,9 +22,25 @@ function songRoutes(): Plugin {
   };
 }
 
+/**
+ * Cloudflare Web Analytics (page views, referrers, countries; no cookies) on every page of the
+ * production build, when CF_BEACON_TOKEN is set (a GitHub repository variable in the deploy workflow).
+ */
+function cloudflareAnalytics(): Plugin {
+  const token = process.env.CF_BEACON_TOKEN?.trim();
+  return {
+    name: 'cloudflare-analytics',
+    apply: 'build',
+    transformIndexHtml(html) {
+      if (!token || !/^[\w-]+$/.test(token)) return html;
+      return html.replace('</body>', `  <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "${token}"}'></script>\n  </body>`);
+    },
+  };
+}
+
 export default defineConfig({
   base,
-  plugins: [preact(), songRoutes()],
+  plugins: [preact(), songRoutes(), cloudflareAnalytics()],
   build: {
     rollupOptions: {
       input: {

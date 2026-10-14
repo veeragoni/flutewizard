@@ -7,6 +7,7 @@ import { ensureAudio } from '../play';
 import { FingeringDiagram } from './FingeringDiagram';
 import { label, subLabel } from './names';
 import { Modal } from './Modal';
+import { track } from '../analytics';
 import { IconHeadphones, IconMic, IconPlay, IconStop, IconTrash } from './icons';
 
 /**
@@ -59,6 +60,7 @@ export function RecordOwn() {
       await customNotes.save({ key: `${setId}|${midi}`, setId, midi, cents: res.cents, seconds: res.seconds, wav: res.wav, created: Date.now() });
       reload();
       bumpCustom();
+      track(`own-note/${inst.id}`);
     }
   };
 

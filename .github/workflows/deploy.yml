@@ -35,6 +35,9 @@ jobs:
         env:
           BASE: ${{ steps.pages.outputs.base_path }}/
           SITE_URL: ${{ steps.pages.outputs.base_url }}/
+          # Analytics, set under Settings → Secrets and variables → Actions → Variables (both optional).
+          CF_BEACON_TOKEN: ${{ vars.CF_BEACON_TOKEN }}
+          VITE_GOATCOUNTER: ${{ vars.GOATCOUNTER_CODE }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

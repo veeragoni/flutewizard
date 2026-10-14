@@ -5,6 +5,7 @@ import { transport } from './audio/transport';
 import { MicPitch, NoteTracker } from './audio/pitch';
 import { freqToMidi, midiToFreq, nearestNote } from './music/theory';
 import { noteFromFingers } from './instruments';
+import { track } from './analytics';
 import {
   activeNote, heldHoles, heldKeys, instrument, naming, octaveShift, prefs, range, root, setPrefs, showToast, syncAudio, timbre,
 } from './state';
@@ -428,6 +429,7 @@ function listenForKey(freq: number | null, clarity: number, level: number) {
     keyFinder.value = { heard, progress: 1, done: true, ok: false, message: `That was about ${noteLabel(heard)}, which isn’t one of the ${inst.name.toLowerCase()} keys here. Play the ${homeNoteHint()} without overblowing.` };
     return;
   }
+  track(`find-key/${inst.id}`);
   setPrefs({ keys: { ...prefs.value.keys, [inst.id]: best.root }, fluteCents: { ...prefs.value.fluteCents, [inst.id]: cents } });
   keyFinder.value = {
     heard, progress: 1, done: true, ok: true,
@@ -453,6 +455,7 @@ export function stopMic() {
 }
 
 export function setInputMode(mode: 'keyboard' | 'fingers' | 'mic') {
+  if (mode !== prefs.value.inputMode) track(`mode/${mode}`);
   prefs.value = { ...prefs.value, inputMode: mode };
   if (mode === 'mic') void startMic();
   else if (mic.active) stopMic();

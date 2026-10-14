@@ -4,6 +4,12 @@ import { drone } from '../audio/drone';
 import { ensureAudio } from '../play';
 import { currentSong, currentSourceSong, panel, prefs, root, setPrefs, tempoBpm, userTranspose, instrument } from '../state';
 import type { Song } from '../music/song';
+import { track } from '../analytics';
+
+/** Built-in songs by name; the player's own songs only as "own". */
+function trackSong(song: Song | null, how: string) {
+  if (song) track(`song/${how}/${song.builtin ? song.id.replace(/^builtin-/, '') : 'own'}`);
+}
 
 /** Load a song into the player (doesn't start it). */
 export function loadSong(song: Song) {
@@ -23,6 +29,7 @@ export function listen(song: Song) {
   ensureAudio();
   if (currentSourceSong.value?.id !== song.id) loadSong(song);
   setPrefs({ playMode: 'listen' });
+  trackSong(song, 'listen');
   panel.value = null;
   queueMicrotask(() => transport.play(0));
 }
@@ -32,6 +39,7 @@ export function playAlong(song: Song) {
   ensureAudio();
   if (currentSourceSong.value?.id !== song.id) loadSong(song);
   if (prefs.value.playMode === 'listen') setPrefs({ playMode: 'along' });
+  trackSong(song, prefs.value.playMode);
   panel.value = null;
   if (song.drone && instrument.value.id === 'bansuri' && !drone.running) drone.start(prefs.value.drone, root.value);
   queueMicrotask(() => transport.play(0));
@@ -40,7 +48,10 @@ export function playAlong(song: Song) {
 export function togglePlay() {
   ensureAudio();
   if (transportState.playing.value) transport.pause();
-  else transport.play();
+  else {
+    trackSong(currentSourceSong.value, prefs.value.playMode);
+    transport.play();
+  }
 }
 
 // Keep the transport's song, tempo and tabla tuning in step with the state.
