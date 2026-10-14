@@ -1,7 +1,7 @@
 {
  "id": "bansuri",
- "credit": "Bansuri recordings by sankalp (freesound.org/people/sankalp), CC BY 4.0. Modified: sliced, trimmed, levelled, looped and re-encoded.",
- "license": "CC BY 4.0",
+ "credit": "Bansuri recordings by sankalp (freesound.org/people/sankalp), CC BY 4.0, and roguentropy (\"Flute Sargams\", CC0). Modified: sliced, trimmed, levelled, looped and re-encoded.",
+ "license": "CC BY 4.0 / CC0 1.0",
  "notes": [
   {
    "midi": 64,
@@ -47,6 +47,16 @@
    "midi": 83,
    "url": "bansuri/83.mp3",
    "cents": 68
+  },
+  {
+   "midi": 78,
+   "url": "bansuri/78.mp3",
+   "cents": -27
+  },
+  {
+   "midi": 79,
+   "url": "bansuri/79.mp3",
+   "cents": -23
   }
  ]
 }

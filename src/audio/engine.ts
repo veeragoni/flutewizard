@@ -112,6 +112,9 @@ class Engine {
     this.guide = bus(0.7);
     this.backing = bus(0.55);
     this.click = bus(0.6);
+    // Start from the default effects (the delay loop's feedback gain must never sit at 1),
+    // so pages that make sound without the app's saved settings are safe too.
+    this.applyFx(DEFAULT_FX);
     return ctx;
   }
 

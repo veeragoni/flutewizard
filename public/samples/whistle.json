@@ -1,7 +1,7 @@
 {
  "id": "whistle",
- "credit": "Tin whistle: \"Waltons Irish ThinWhistle in D\" by cernoel, freesound.org/people/cernoel/packs/22189/",
- "license": "CC0 1.0",
+ "credit": "Tin whistle: \"Waltons Irish ThinWhistle in D\" by cernoel (CC0); E6 from \"scarborough_2\" by tychobrailleur (CC BY 4.0); F#6\u2013B6 from \"Danny Boy tin whistle\" by Jules Grandgagnage (CC BY-SA 4.0)",
+ "license": "CC0 1.0 / CC BY 4.0 / CC BY-SA 4.0",
  "notes": [
   {
    "midi": 74,
@@ -47,6 +47,31 @@
    "midi": 86,
    "url": "whistle/86.mp3",
    "cents": 13
+  },
+  {
+   "midi": 88,
+   "url": "whistle/88.mp3",
+   "cents": 26
+  },
+  {
+   "midi": 90,
+   "url": "whistle/90.mp3",
+   "cents": -2
+  },
+  {
+   "midi": 91,
+   "url": "whistle/91.mp3",
+   "cents": -4
+  },
+  {
+   "midi": 93,
+   "url": "whistle/93.mp3",
+   "cents": 17
+  },
+  {
+   "midi": 95,
+   "url": "whistle/95.mp3",
+   "cents": 20
   }
  ]
 }
