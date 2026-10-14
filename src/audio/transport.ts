@@ -330,7 +330,7 @@ class Transport {
       const when = this.timeAt(b);
       if (when < engine.now - 0.01) continue;
       const inCountIn = b < 0;
-      if (inCountIn || this.band.click) {
+      if ((inCountIn || this.band.click) && song.click !== false) {
         const beatInBar = (((b % bar) + bar) % bar);
         playClick(when, beatInBar < 1e-6, engine.click.input);
       }

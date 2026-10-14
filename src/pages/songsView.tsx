@@ -94,7 +94,8 @@ export function SongsView({ route, root }: { route: SongsRoute; root?: number })
 function SongPage({ slug, instId, root: rootIn }: { slug: string; instId: InstrumentId; root?: number }) {
   const src = builtinSongs().find((s) => slugOf(s) === slug)!;
   const inst = INSTRUMENTS[instId];
-  const root = rootIn !== undefined && inst.keyOptions.some((k) => k.root === rootIn) ? rootIn : inst.defaultKey;
+  const wanted = rootIn ?? src.keys?.[instId];
+  const root = wanted !== undefined && inst.keyOptions.some((k) => k.root === wanted) ? wanted : inst.defaultKey;
   const song = fitSong(src, inst, root);
   const name = (m: number) => (inst.naming === 'sargam' ? sargamName(m, root) : noteName(m, { octave: false }));
   const bars = notesByBar(song);

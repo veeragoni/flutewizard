@@ -1,5 +1,5 @@
 import { useEffect } from 'preact/hooks';
-import { activeNote, instrument, panel, prefs, root, setPrefs, toast, currentSong, heldHoles, heldKeys, shownNote } from '../state';
+import { activeNote, instrument, panel, prefs, root, setPrefs, songKeys, toast, currentSong, heldHoles, heldKeys, shownNote } from '../state';
 import { INSTRUMENT_ORDER, INSTRUMENTS, noteFromFingers, type InstrumentId } from '../instruments';
 import { FluteView } from './FluteView';
 import { closeKeyFinder, ensureAudio, findMyKey, micProblem, resumeMic, startMic, fingerPreview, homeNoteHint, installKeyboard, keyFinder, micOn, micReading, setBlow, setFinger, setInputMode, CONCERT_KEYS, holeKeys, setOverblow } from '../play';
@@ -200,7 +200,7 @@ function KeySelect() {
       <select
         value={root.value}
         // Picking a key by hand forgets the tuning "Find my Sa" measured on the previous flute.
-        onChange={(e) => setPrefs({ keys: { ...prefs.value.keys, [inst.id]: Number((e.target as HTMLSelectElement).value) }, fluteCents: { ...prefs.value.fluteCents, [inst.id]: 0 } })}
+        onChange={(e) => { songKeys.value = null; setPrefs({ keys: { ...prefs.value.keys, [inst.id]: Number((e.target as HTMLSelectElement).value) }, fluteCents: { ...prefs.value.fluteCents, [inst.id]: 0 } }); }}
       >
         {inst.keyOptions.map((k) => <option value={k.root}>{k.label}</option>)}
       </select>

@@ -1,3 +1,4 @@
+import { signal } from '@preact/signals';
 import { engine } from './engine';
 import { midiToFreq } from '../music/theory';
 
@@ -18,6 +19,9 @@ export const DRONES: { id: DroneKind; label: string }[] = [
   { id: 'shruti', label: 'Shruti box (Sa + Pa)' },
   { id: 'tonic', label: 'Sustained tonic' },
 ];
+
+/** Whether a drone is sounding, for the UI. */
+export const droneRunning = signal(false);
 
 class Drone {
   private out: GainNode | null = null;
@@ -41,6 +45,7 @@ class Drone {
     this.out.gain.setTargetAtTime(this.volume, ctx.currentTime, 0.3);
     this.out.connect(engine.backing.input);
     this.running = true;
+    droneRunning.value = true;
     if (kind.startsWith('tanpura')) {
       this.nextPluck = ctx.currentTime + 0.05;
       this.step = 0;
@@ -66,6 +71,7 @@ class Drone {
     this.sustained = [];
     this.out = null;
     this.running = false;
+    droneRunning.value = false;
   }
 
   setVolume(v: number) {

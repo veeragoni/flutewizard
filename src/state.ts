@@ -73,7 +73,9 @@ effect(() => saveJSON(PREFS_KEY, prefs.value));
 
 export const instrument = computed(() => INSTRUMENTS[prefs.value.instrument]);
 /** Root of the current instrument (Sa for bansuri, key for whistles). */
-export const root = computed(() => rootFor(instrument.value, prefs.value.keys[prefs.value.instrument]));
+/** The key the loaded song asks for (e.g. a C bansuri), until the player picks one themselves. */
+export const songKeys = signal<Partial<Record<InstrumentId, number>> | null>(null);
+export const root = computed(() => rootFor(instrument.value, songKeys.value?.[prefs.value.instrument] ?? prefs.value.keys[prefs.value.instrument]));
 export const tonic = computed(() => tonicOf(instrument.value, root.value));
 export const naming = computed<'western' | 'sargam'>(() =>
   prefs.value.naming === 'auto' ? instrument.value.naming : prefs.value.naming);

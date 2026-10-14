@@ -42,6 +42,12 @@ export interface Song {
   /** Suggested backing: drum groove id and whether to sound a drone. */
   groove?: string;
   drone?: boolean;
+  /** A drone that plays with the song (and stops with it), e.g. 'shruti'. */
+  droneKind?: 'tanpura-pa' | 'tanpura-ma' | 'tanpura-ni' | 'shruti' | 'tonic';
+  /** false: no metronome clicks, not even the count-in (the drone keeps time instead). */
+  click?: boolean;
+  /** The flute key this song is meant for, by flute (MIDI of Sa), used while it's loaded. */
+  keys?: Partial<Record<'concert' | 'bansuri' | 'recorder' | 'whistle', number>>;
   /** Semitones the player chose to move the song by (saved with the song). */
   transpose?: number;
   updatedAt?: number;

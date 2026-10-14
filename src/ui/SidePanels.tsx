@@ -4,10 +4,11 @@ import { signal } from '@preact/signals';
 import { panel, prefs, setPrefs, currentSong, instrument, root, showToast, tempoBpm } from '../state';
 import { engine, ROOMS, type FxSettings, type RoomId } from '../audio/engine';
 import { GROOVES, playClick } from '../audio/backing';
-import { drone, DRONES, type DroneKind } from '../audio/drone';
+import { drone, droneRunning, DRONES, type DroneKind } from '../audio/drone';
 import { Recorder, MAX_SECONDS, takes } from '../audio/recorder';
 import { track } from '../analytics';
 import { ensureAudio } from '../play';
+import { droneSa } from '../songs/actions';
 import { barLength, notesByBar } from '../music/song';
 import { label } from './names';
 import { FingeringDiagram } from './FingeringDiagram';
@@ -15,7 +16,6 @@ import { formatTime } from './SongsPanel';
 import { IconClose, IconMetronome, IconRecord, IconSliders, IconStop, IconVolume, IconWave } from './icons';
 import { songsTab } from '../state';
 
-const droneOn = signal(false);
 const recorder = new Recorder();
 const recState = signal<{ on: boolean; elapsed: number }>({ on: false, elapsed: 0 });
 
@@ -26,7 +26,7 @@ export function SideRail() {
     <aside class="side-rail">
       <button class={'icon-btn' + (panel.value === 'mixer' ? ' on' : '')} onClick={() => open('mixer')} title="Volume"><IconVolume /></button>
       <button class={'icon-btn' + (panel.value === 'fx' ? ' on' : '')} onClick={() => open('fx')} title="Sound and effects"><IconSliders /></button>
-      <button class={'icon-btn' + (panel.value === 'band' || droneOn.value ? ' on' : '')} onClick={() => open('band')} title="Drone, metronome and band"><IconMetronome /></button>
+      <button class={'icon-btn' + (panel.value === 'band' || droneRunning.value ? ' on' : '')} onClick={() => open('band')} title="Drone, metronome and band"><IconMetronome /></button>
       <button class={'icon-btn rec' + (rec.on ? ' live' : '')} onClick={() => (rec.on ? void stopRecording() : open('record'))} title={rec.on ? 'Stop recording' : 'Record'}>
         {rec.on ? <IconStop /> : <IconRecord />}
       </button>
@@ -134,8 +134,8 @@ function Band() {
   const setBand = (patch: Partial<typeof b>) => setPrefs({ band: { ...b, ...patch } });
   const toggleDrone = () => {
     ensureAudio();
-    if (drone.running) { drone.stop(); droneOn.value = false; }
-    else { drone.setVolume(p.droneVolume); drone.start(p.drone, root.value); droneOn.value = true; }
+    if (drone.running) drone.stop();
+    else { drone.setVolume(p.droneVolume); drone.start(p.drone, droneSa()); }
   };
   const [metro, setMetro] = useState(false);
   return (
@@ -143,13 +143,13 @@ function Band() {
       <div class="field">
         <span>Drone</span>
         <div class="row-gap">
-          <button class={'chip big' + (droneOn.value ? ' on' : '')} onClick={toggleDrone}>
-            <IconWave size={16} /> {droneOn.value ? 'Drone on' : 'Start drone'}
+          <button class={'chip big' + (droneRunning.value ? ' on' : '')} onClick={toggleDrone}>
+            <IconWave size={16} /> {droneRunning.value ? 'Drone on' : 'Start drone'}
           </button>
           <select value={p.drone} onChange={(e) => {
             const k = (e.target as HTMLSelectElement).value as DroneKind;
             setPrefs({ drone: k });
-            if (drone.running) drone.start(k, root.value);
+            if (drone.running) drone.start(k, droneSa());
           }}>
             {DRONES.map((d) => <option value={d.id}>{d.label}</option>)}
           </select>
