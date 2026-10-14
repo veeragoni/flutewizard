@@ -28,7 +28,7 @@ function Credits() {
           <li>Bansuri: David Philipson&rsquo;s chart (One World Flutes), sound-of-bansuri.com, flutesangam.com.</li>
         </ul>
         <h2>Songs</h2>
-        <p>All built-in tunes are traditional or by composers in the public domain, transcribed for this app. Songs you write or import stay in your browser.</p>
+        <p>The built-in tunes are traditional or by composers in the public domain, transcribed for this app, except the Bombay theme (A.R. Rahman), transcribed for practice from a YouTube bansuri lesson by Kishan’s Flute; its rights stay with their owners. Songs you write or import stay in your browser.</p>
       </section>
     </PageShell>
   );

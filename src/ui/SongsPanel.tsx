@@ -33,7 +33,7 @@ export function SongsPanel() {
                   <span class="callout-icon">♪</span>
                   <div>
                     <b>Play along</b>
-                    <p>Public-domain tunes, folk favourites and ragas, set up with tempo and a backing groove. Listen first, then press Play and follow the fingerings. Slow the tempo down while you learn.</p>
+                    <p>Folk favourites, classics, ragas and a film theme, set up with tempo and a backing groove. Listen first, then press Play and follow the fingerings. Slow the tempo down while you learn.</p>
                   </div>
                 </div>
               ) : (

@@ -71,7 +71,7 @@ export function SongsView({ route, root }: { route: SongsRoute; root?: number })
   if (route.slug) return <SongPage slug={route.slug} instId={route.inst} root={root} />;
   const songs = builtinSongs();
   return (
-    <PageShell title="Easy flute songs" intro="Public-domain tunes, folk favourites, ragas and exercises for flute, bansuri, recorder and tin whistle. Each comes with notes, fingerings and a play-along with a backing band.">
+    <PageShell title="Easy flute songs" intro="Folk favourites, classics, ragas, a film theme and exercises for flute, bansuri, recorder and tin whistle. Each comes with notes, fingerings and a play-along with a backing band.">
       <div class="song-list">
         {songs.map((s) => (
           <div class="song-row">

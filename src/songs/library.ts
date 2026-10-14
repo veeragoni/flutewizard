@@ -2,8 +2,8 @@ import type { Song } from '../music/song';
 import { parseSongText, type TextFormat } from './parsers';
 
 /**
- * Built-in tunes. Every melody here is public domain (traditional, or by composers who died
- * long ago) or an exercise. Written in the same text formats people can import, so the
+ * Built-in tunes. Public domain (traditional, or by composers who died long ago) or exercises,
+ * plus the Bombay theme, which the project owner chose to include. Written in the same text formats people can import, so the
  * library doubles as examples.
  */
 
@@ -240,6 +240,33 @@ Time: 3/4
 Sa Re Ga | Re Ga Ma | Ga Ma Pa | Ma Pa Dha | Pa Dha Ni | Dha Ni Sa' |
 [Avroh]
 Sa' Ni Dha | Ni Dha Pa | Dha Pa Ma | Pa Ma Ga | Ma Ga Re | Ga Re Sa |`,
+  },
+  {
+    id: 'bombay-theme', format: 'sargam', tags: ['Film', 'Bansuri'], groove: 'none', drone: true,
+    blurb: 'A.R. Rahman’s much-loved theme from the film Bombay (1995), with its grace notes and timing, as played on a C bansuri in a YouTube lesson by Kishan’s Flute.',
+    text: `Title: Bombay Theme
+Artist: A.R. Rahman
+Flute: C
+Tempo: 130
+Unit: 1/16
+[Theme]
+Dha------ Dha--------- Dha----- Dha--------- Pa- Pa- Dha Ni Dha- Sa' Ni--- Dha-- Pa---- ma- Ga- ma-- Re-------- Pa- Dha------------- Ni- Re'-- _-----------
+Pa- Dha--- Sa' Ni--- Dha-- Pa--- ma-- Ga ma-- Re--- Ga------
+Dha------ Pa- ma-- Ga- ma- Ga-- Re----------------- Ga--- ma- Ga ma Ga ma Ga Ma# Ga ma Ga- Re Sa .Ni- _--------
+.Ni----- Sa- Re Ga Ma#- Pa Ma# Pa--------- Dha Pa- Ga---------- ma- Ga ma Ga ma Ga- Ga--- Re-------------------- _---------
+[Theme again]
+Dha------ Dha--------- Dha----- Dha---------- Pa--- Dha Ni- Dha Ni Ni---- Dha- Pa----- ma- Ga- ma-- Re Re-------- Pa- Dha------------ Ni- Re'-- _----------
+Pa-- Dha--- Ni--- Dha- Pa Pa--- ma-- Ga- ma- Re--- Ga-----
+Ni Dha----- Pa- ma-- Ga- ma- Ga-- Re---------------- Ga---- ma- Ga ma Ga ma Ga ma Ga ma Ga- Re Sa .Ni- _--------
+.Ni------- Sa- Re Ga- Ma#- Pa Ma#- Pa---------- Pa- Ga-------- ma- Ga ma Ga- Ga---- Re------------------- Re _-----------
+[Ending]
+Re---- Dha-- Pa---------- ma-- Ga- ma- _-----------
+Re-- Pa Dha-- Pa----------- ma- Ga Ga _-----------
+Re---- Dha--- Pa---------- ma- Ga- ma- _-------
+Re--- Sa'- Ni- Dha-- _-----------
+Re--- Dha---- Pa---------- ma- Ga- ma------- Re--- Dha--- Pa----------- ma Ga-- ma------
+Re--- Sa'-- Dha------------- Pa- ma Pa------ Re---- Sa'- Dha---------- Pa- ma- Pa-------
+Re-- Dha--- Pa----------- ma Ga- ma---- Re----- Pa Dha-- Pa---------- ma Ga- ma---------------`,
   },
   {
     id: 'long-tones', format: 'letters', tags: ['Practice', 'Beginner'], groove: 'none', drone: true,

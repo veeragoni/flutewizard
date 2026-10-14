@@ -15,7 +15,7 @@ Play the concert flute, bansuri, recorder and tin whistle online, with real reco
   - **My flute:** play your real flute into the microphone, with *Find my Sa* to detect your flute's key and tuning.
 - **Real sound.** Each flute is built from recorded notes, with a physical-model flute as an alternative. You can also record your own flute note by note and play with your own sound.
 - **Songs.**
-  - A public-domain library with a page for every song on every flute.
+  - A song library with a page for every song on every flute.
   - Paste or write your own songs:
     - letter notes
     - Sargam, including the styles used on Indian notation sites (`S’`, `’N`, `RgR…S`, `n.d.`, `Notes: s r2 g2…`)
@@ -60,4 +60,4 @@ P PP… | M g RgR…S | D~S’ R’ g’ S’
 
   The tin-whistle notes F♯6–B6 come from a CC BY-SA 4.0 recording and are shared under that licence.
 - **Modelled flute:** based on Perry R. Cook's waveguide flute (Synthesis ToolKit).
-- **Songs:** the built-in songs are public domain or traditional.
+- **Songs:** the built-in songs are public domain or traditional, except the Bombay theme (A.R. Rahman), transcribed for practice.
