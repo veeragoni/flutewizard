@@ -8,7 +8,7 @@ function Credits() {
     <PageShell title="Credits & sources">
       <section class="article">
         <h2>Inspiration</h2>
-        <p>Flutely was inspired by <a href="https://guitoro.com/">Guitoro</a>, a lovely online virtual guitar. Flutely is an independent project with its own code, sounds and songs, and isn't affiliated with Guitoro.</p>
+        <p>Flute Wizard was inspired by <a href="https://guitoro.com/">Guitoro</a>, a lovely online virtual guitar. Flute Wizard is an independent project with its own code, sounds and songs, and isn't affiliated with Guitoro.</p>
         <h2>Recordings</h2>
         <ul>
           <li><b>Bansuri:</b> recordings by <a href="https://freesound.org/people/sankalp/">sankalp</a> on Freesound (sounds 179693, 179694, 179695, 179696), licensed <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Upper-octave notes from &ldquo;<a href="https://freesound.org/people/roguentropy/sounds/844538/">Flute Sargams</a>&rdquo; by roguentropy, CC0. Modified: sliced into single notes, trimmed, levelled, looped, pitch-corrected and re-encoded.</li>

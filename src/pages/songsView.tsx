@@ -43,7 +43,7 @@ export function allRoutes(): SongsRoute[] {
 export function pageMeta(route: SongsRoute): { title: string; description: string; path: string; jsonLd?: object } {
   if (!route.slug) {
     return {
-      title: 'Easy Flute Songs with Notes & Fingerings | Flutely',
+      title: 'Easy Flute Songs with Notes & Fingerings | Flute Wizard',
       description: 'Easy flute, bansuri, recorder and tin whistle songs with notes, fingerings and play-along backing tracks. Free, in your browser.',
       path: 'songs/',
     };
@@ -53,7 +53,7 @@ export function pageMeta(route: SongsRoute): { title: string; description: strin
   const word = FLUTE_WORD[route.inst];
   const naming = inst.naming === 'sargam' ? 'sargam notes' : 'letter notes';
   return {
-    title: `${src.title} ${word === 'flute' ? 'Flute' : word.replace(/\b\w/g, (c) => c.toUpperCase())} Notes & Fingering | Flutely`,
+    title: `${src.title} ${word === 'flute' ? 'Flute' : word.replace(/\b\w/g, (c) => c.toUpperCase())} Notes & Fingering | Flute Wizard`,
     description: `${src.title} on the ${word}: ${naming} with a fingering chart for every note, and a free play-along with backing band. ${src.blurb ?? ''}`.trim(),
     path: songPath(route.slug, route.inst),
     jsonLd: {

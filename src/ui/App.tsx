@@ -52,7 +52,7 @@ function TopBar() {
       <a class="brand" href={at('')}>
         <Logo />
         <span>
-          <b>Flutely</b>
+          <b>Flute Wizard</b>
           <small>Online Virtual Flute</small>
         </span>
       </a>

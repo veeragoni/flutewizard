@@ -9,7 +9,7 @@ export function PageShell({ title, intro, children }: { title: string; intro?: s
       <header class="topbar page-top">
         <a class="brand" href={at('/')}>
           <Logo />
-          <span><b>Flutely</b><small>Online Virtual Flute</small></span>
+          <span><b>Flute Wizard</b><small>Online Virtual Flute</small></span>
         </a>
         <nav class="page-nav">
           <a href={at('/')}>Play</a>

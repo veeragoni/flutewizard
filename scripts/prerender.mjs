@@ -51,7 +51,7 @@ try {
   for (const path of ['', 'tuner/', 'fingering-charts/', 'credits/']) {
     const file = resolve(dist, path, 'index.html');
     let html = readFileSync(file, 'utf8');
-    const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? 'Flutely';
+    const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? 'Flute Wizard';
     const desc = /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? '';
     const head = [
       `<meta property="og:title" content="${title}" />`,
@@ -69,7 +69,7 @@ try {
   const base = process.env.BASE ?? '/';
   writeFileSync(resolve(dist, '404.html'), `<!doctype html>
 <html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Page not found | Flutely</title><meta name="robots" content="noindex" /><link rel="icon" href="${base}favicon.svg" type="image/svg+xml" />
+<title>Page not found | Flute Wizard</title><meta name="robots" content="noindex" /><link rel="icon" href="${base}favicon.svg" type="image/svg+xml" />
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#111317;color:#e9e6df;font:16px/1.5 system-ui,sans-serif;text-align:center;padding:16px}
 a{color:#f0b54d}h1{font-size:28px;margin:0 0 8px}p{color:#a39f97;margin:0 0 20px}</style></head>
 <body><main><h1>That page isn’t here</h1><p>It may have moved. Try the virtual flute or the song library.</p>

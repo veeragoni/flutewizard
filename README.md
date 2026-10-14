@@ -1,10 +1,10 @@
-# Flutely: a virtual flute in your browser
+# Flute Wizard: a virtual flute in your browser
 
 **Play it: https://veeragoni.github.io/flutewizard/**
 
 Play the concert flute, bansuri, recorder and tin whistle online, with real recorded sound, live fingering diagrams, play-along songs and a backing band. Nothing to install and no account; your songs and recordings stay in your browser.
 
-![Flutely playing Raag Yaman on the bansuri](public/og.png)
+![Flute Wizard playing Raag Yaman on the bansuri](public/og.png)
 
 ## What it does
 
@@ -52,7 +52,7 @@ P PP… | M g RgR…S | D~S’ R’ g’ S’
 
 ## Credits
 
-- **Inspiration:** [Guitoro](https://guitoro.com/), the online virtual guitar. Flutely is an independent project with its own code, sounds and songs, and isn't affiliated with Guitoro.
+- **Inspiration:** [Guitoro](https://guitoro.com/), the online virtual guitar. Flute Wizard is an independent project with its own code, sounds and songs, and isn't affiliated with Guitoro.
 - **Recordings:** these are listed with their licences on the app's [credits page](https://veeragoni.github.io/flutewizard/credits/) and in `public/samples/*.json`. They come from:
   - sankalp and roguentropy (bansuri)
   - Versilian Studios (concert flute and recorder)
