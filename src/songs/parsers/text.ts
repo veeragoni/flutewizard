@@ -59,7 +59,7 @@ export const ALT_VERSION = /^\s*(?:[=*_~#-]{4,}|(?:option|version|alternative|al
 /** A video timestamp at the start of a line ("02:52|", "[1:05:10]"), as on notations made from tutorials. */
 export const TIMESTAMP = /^\s*[\[(]?(\d{1,2}:\d{2}(?::\d{2})?)[\])]?\s*(?:[|:>)\]-]+|[–—.](?=\s))?\s*/;
 const SECTION_BRACKET = /^\s*\[([^\]]{1,40})\]\s*$/;
-const SECTION_WORD = /^\s*(intro|verse|pre-?chorus|chorus|bridge|outro|interlude|refrain|solo|sthayi|sthai|antara|mukhda|pallavi|anupallavi|charanam|coda|part\s*[a-z0-9]+)\b\s*\d*\s*:?\s*$/i;
+const SECTION_WORD = /^\s*(intro|verse|pre-?chorus|chorus|bridge|outro|interlude|refrain|solo|music|instrumental|bgm|prelude|ending|sthayi|sthai|antara|mukhda|pallavi|anupallavi|charanam|coda|part\s*[a-z0-9]+)\b\s*\d*\s*:?\s*$/i;
 
 export function parseText(text: string, mode: TextMode, opts: { sa?: number } = {}): ParseResult {
   const song = emptySong();
@@ -310,8 +310,8 @@ type Ev =
 
 /** Returns null when the line looks like words rather than notes. */
 function parseLine(line0: string, ctx: Ctx, unit: number): { events: Ev[]; unknown: string[] } | null {
-  // "(x2)" or "x3" at the end of a line plays it that many times.
-  const rep = /(?:\(\s*[x×]\s*(\d{1,2})\s*\)|(?:^|\s)[x×](\d{1,2}))\s*$/i.exec(line0);
+  // "(x2)", "(2)" or "x3" at the end of a line plays it that many times.
+  const rep = /(?:\(\s*[x×]?\s*(\d{1,2})\s*(?:times)?\s*\)|(?:^|\s)[x×](\d{1,2}))\s*$/i.exec(line0);
   const times = rep ? Math.max(1, Math.min(16, parseInt(rep[1] ?? rep[2], 10))) : 1;
   const line = rep ? line0.slice(0, rep.index) : line0;
   let spaced = line

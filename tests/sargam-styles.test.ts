@@ -90,6 +90,14 @@ describe('notes written down from a video tutorial', () => {
     expect(d.slice(10, 13)).toEqual([0.25, 0.25, 1]); // NiSaNi: two grace notes landing on Ni
   });
 
+  it('repeats lines marked (2) and treats MUSIC as a section', () => {
+    const { r, p } = rel('MUSIC\n\n09:45| RePaDh Pa......maGama (2)\n      RePaDh Sa.......Dh PamaPa(2)');
+    expect(r.warnings).toEqual([]);
+    expect(r.song.sections.map((s) => s.name)).toEqual(['MUSIC', '09:45']);
+    const once = [2, 7, 9, 7, 5, 4, 5], twice = [2, 7, 9, 12, 9, 7, 5, 7];
+    expect(p).toEqual([...once, ...once, ...twice, ...twice]);
+  });
+
   it('leaves marked octaves to the writer', () => {
     expect(rel("S R G M P D N S'").p).toEqual([0, 2, 4, 5, 7, 9, 11, 12]);
     expect(rel('Sa Re Ga Ma Pa Dha Ni Sa').p).toEqual([0, 2, 4, 5, 7, 9, 11, 12]); // unmarked: Sa goes up
