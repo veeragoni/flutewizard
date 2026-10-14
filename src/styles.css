@@ -109,7 +109,7 @@ kbd {
 .ghost-target { position: absolute; right: 12px; top: 0; background: var(--panel); border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--muted); }
 .ghost-target b { color: var(--gold-2); }
 
-.key-select { position: absolute; right: 0; bottom: -6px; display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+.key-select { position: absolute; right: 12px; bottom: -6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 24px); color: var(--muted); font-size: 13px; }
 select, input[type='text'], input[type='number'], input[type='search'], textarea {
   background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 10px; outline: none;
 }
