@@ -3,10 +3,10 @@ import { engine } from './audio/engine';
 import { HybridVoice, loadFluteModel, type Voice } from './audio/modelVoice';
 import { transport } from './audio/transport';
 import { MicPitch, NoteTracker } from './audio/pitch';
-import { nearestNote } from './music/theory';
+import { freqToMidi, midiToFreq, nearestNote } from './music/theory';
 import { noteFromFingers } from './instruments';
 import {
-  activeNote, heldHoles, heldKeys, instrument, naming, octaveShift, prefs, range, root, showToast, syncAudio, timbre,
+  activeNote, heldHoles, heldKeys, instrument, naming, octaveShift, prefs, range, root, setPrefs, showToast, syncAudio, timbre,
 } from './state';
 
 /**
@@ -316,17 +316,16 @@ export const micOn = signal(false);
 export async function startMic() {
   if (mic.active) return;
   ensureAudio();
-  const [lo, hi] = range.value;
-  mic.minFreq = 440 * Math.pow(2, (lo - 2 - 69) / 12);
-  mic.maxFreq = 440 * Math.pow(2, (hi + 2 - 69) / 12);
   const tracker = new NoteTracker((midi) => {
     activeNote.value = midi;
     if (midi !== null) transport.userNote(midi);
   });
   try {
     await mic.start((r) => {
+      if (keyFinder.value && !keyFinder.value.done) return listenForKey(r.freq, r.clarity, r.level);
       if (r.freq && r.clarity > 0.8) {
-        const n = nearestNote(r.freq, prefs.value.a4);
+        // Read notes against the player's own flute, which may sit a little sharp or flat.
+        const n = nearestNote(r.freq, prefs.value.a4 * Math.pow(2, (prefs.value.fluteCents?.[prefs.value.instrument] ?? 0) / 1200));
         micReading.value = { midi: n.midi, cents: n.cents, freq: r.freq, level: r.level };
         tracker.push(n.midi);
       } else {
@@ -339,6 +338,84 @@ export async function startMic() {
     showToast('Microphone access was blocked. Allow it in your browser to use "My flute".');
     setInputMode('keyboard');
   }
+}
+
+/**
+ * "Find my Sa": the player holds their flute's home note (top three holes closed on a bansuri,
+ * all six on a whistle) and the app sets the flute's key from what it hears.
+ */
+export const keyFinder = signal<null | { heard: number | null; progress: number; done?: boolean; message?: string; ok?: boolean }>(null);
+let finderFrames: number[] = [];
+let finderTimer = 0;
+
+// Listen only within the flute's range (a little either side), so the detector can't lock onto
+// pitches far below or above it. While finding the key, listen across every key the flute comes in.
+effect(() => {
+  const [lo, hi] = range.value;
+  const finding = keyFinder.value && !keyFinder.value.done;
+  const keys = instrument.value.keyOptions.map((k) => k.root);
+  const a4 = prefs.value.a4;
+  mic.minFreq = midiToFreq((finding ? Math.min(...keys) : lo) - 2, a4);
+  mic.maxFreq = midiToFreq((finding ? Math.max(...keys) : hi) + 2, a4);
+});
+
+export function findMyKey() {
+  finderFrames = [];
+  keyFinder.value = { heard: null, progress: 0 };
+  if (!mic.active) setInputMode('mic');
+  clearTimeout(finderTimer);
+  finderTimer = window.setTimeout(() => {
+    if (keyFinder.value && !keyFinder.value.done) {
+      keyFinder.value = { heard: null, progress: 0, done: true, ok: false, message: 'I couldn’t hear a steady note. Play the home note for about two seconds, close to the microphone.' };
+    }
+  }, 15000);
+}
+
+export function closeKeyFinder() {
+  clearTimeout(finderTimer);
+  keyFinder.value = null;
+}
+
+const FINDER_FRAMES = 70; // about a second of steady tone
+
+function listenForKey(freq: number | null, clarity: number, level: number) {
+  micReading.value = { ...micReading.value, freq, level, midi: freq ? Math.round(freqToMidi(freq, prefs.value.a4)) : null };
+  if (!freq || clarity < 0.85) return;
+  const m = freqToMidi(freq, prefs.value.a4);
+  const sorted = [...finderFrames].sort((a, b) => a - b);
+  const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : m;
+  // Start over if the pitch moves (a different note, or the player is still settling).
+  if (Math.abs(m - median) > 0.45) finderFrames = [];
+  finderFrames.push(m);
+  keyFinder.value = { heard: m, progress: Math.min(1, finderFrames.length / FINDER_FRAMES) };
+  if (finderFrames.length < FINDER_FRAMES) return;
+
+  const all = [...finderFrames].sort((a, b) => a - b);
+  const heard = all[Math.floor(all.length / 2)];
+  const inst = instrument.value;
+  const best = inst.keyOptions.reduce((a, k) => (Math.abs(k.root - heard) < Math.abs(a.root - heard) ? k : a));
+  clearTimeout(finderTimer);
+  const cents = Math.round((heard - best.root) * 100);
+  if (Math.abs(heard - best.root) > 0.6) {
+    // Probably an overblown or different note: say what was heard instead of guessing.
+    keyFinder.value = { heard, progress: 1, done: true, ok: false, message: `That was about ${noteLabel(heard)}, which isn’t one of the ${inst.name.toLowerCase()} keys here. Play the ${homeNoteHint()} without overblowing.` };
+    return;
+  }
+  setPrefs({ keys: { ...prefs.value.keys, [inst.id]: best.root }, fluteCents: { ...prefs.value.fluteCents, [inst.id]: cents } });
+  keyFinder.value = {
+    heard, progress: 1, done: true, ok: true,
+    message: `Your flute is set to ${best.label}.${Math.abs(cents) >= 10 ? ` It plays ${Math.abs(cents)}¢ ${cents > 0 ? 'sharp' : 'flat'} of standard pitch, so notes are now read against your flute.` : ''}`,
+  };
+}
+
+function noteLabel(m: number) {
+  const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const r = Math.round(m);
+  return `${names[((r % 12) + 12) % 12]}${Math.floor(r / 12) - 1}`;
+}
+
+export function homeNoteHint() {
+  return instrument.value.id === 'bansuri' ? 'note with the top three holes closed (Sa)' : 'note with all six holes closed';
 }
 
 export function stopMic() {

@@ -15,6 +15,8 @@ export type NoteNaming = 'auto' | 'western' | 'sargam';
 interface Prefs {
   instrument: InstrumentId;
   keys: Partial<Record<InstrumentId, number>>;
+  /** How far the player's own flute sits from standard pitch (cents, from "Find my Sa"), per flute. */
+  fluteCents?: Partial<Record<InstrumentId, number>>;
   inputMode: InputMode;
   layout: KeyLayout;
   naming: NoteNaming;

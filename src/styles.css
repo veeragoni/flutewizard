@@ -155,6 +155,11 @@ select:focus, input:focus, textarea:focus { border-color: var(--gold); }
 
 .mic-status { margin: 16px 24px; display: flex; gap: 12px; align-items: center; color: var(--muted); }
 .mic-status b { color: var(--gold-2); font-size: 18px; }
+.mic-status { flex-wrap: wrap; }
+.mic-status .spacer { flex: 1; }
+.key-finder { padding: 10px 14px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--panel); color: var(--text); }
+.key-finder.ok { border-color: var(--green); }
+.key-finder.bad { border-color: var(--gold); }
 .mic-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--faint); }
 .mic-dot.on { background: var(--red); box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.2); animation: pulse 1.4s infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(255, 107, 107, 0.05); } }
@@ -428,3 +433,4 @@ input[type='range'] { accent-color: var(--gold); width: 100%; }
 .own-btns { display: flex; gap: 4px; align-items: center; margin-top: 4px; }
 .small-note { font-size: 12px; margin-top: 12px; }
 @media (max-width: 900px) { .own-intro { grid-template-columns: 1fr; } }
+.small-text { font-size: 12.5px; }

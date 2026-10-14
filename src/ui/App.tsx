@@ -2,7 +2,8 @@ import { useEffect } from 'preact/hooks';
 import { activeNote, instrument, panel, prefs, root, setPrefs, toast, currentSong, heldHoles, heldKeys, shownNote } from '../state';
 import { INSTRUMENT_ORDER, INSTRUMENTS, noteFromFingers, type InstrumentId } from '../instruments';
 import { FluteView } from './FluteView';
-import { ensureAudio, fingerPreview, installKeyboard, micOn, micReading, setBlow, setFinger, setInputMode, CONCERT_KEYS, holeKeys, setOverblow } from '../play';
+import { closeKeyFinder, ensureAudio, findMyKey, fingerPreview, homeNoteHint, installKeyboard, keyFinder, micOn, micReading, setBlow, setFinger, setInputMode, CONCERT_KEYS, holeKeys, setOverblow } from '../play';
+import { noteName } from '../music/theory';
 import { IconHand, IconKeyboard, IconMenu, IconMic, InstrumentIcon } from './icons';
 import { label, subLabel } from './names';
 import { Keyboard } from './Keyboard';
@@ -194,16 +195,43 @@ function KeySelect() {
       <span>{inst.id === 'bansuri' ? 'Flute key (Sa)' : 'Whistle key'}</span>
       <select
         value={root.value}
-        onChange={(e) => setPrefs({ keys: { ...prefs.value.keys, [inst.id]: Number((e.target as HTMLSelectElement).value) } })}
+        // Picking a key by hand forgets the tuning "Find my Sa" measured on the previous flute.
+        onChange={(e) => setPrefs({ keys: { ...prefs.value.keys, [inst.id]: Number((e.target as HTMLSelectElement).value) }, fluteCents: { ...prefs.value.fluteCents, [inst.id]: 0 } })}
       >
         {inst.keyOptions.map((k) => <option value={k.root}>{k.label}</option>)}
       </select>
+      <button class="link small-text" onClick={(e) => { e.preventDefault(); findMyKey(); }} title="Play your flute's home note and the app sets the key">
+        {inst.id === 'bansuri' ? 'Find my Sa' : 'Find my key'}
+      </button>
     </label>
   );
 }
 
 function MicStatus() {
   const r = micReading.value;
+  const inst = instrument.value;
+  const kf = keyFinder.value;
+  const canFind = inst.keyOptions.length > 1;
+  const findLabel = inst.id === 'bansuri' ? 'Find my Sa' : 'Find my key';
+  if (kf) {
+    return (
+      <div class={'mic-status key-finder' + (kf.done ? (kf.ok ? ' ok' : ' bad') : '')}>
+        <span class={'mic-dot' + (micOn.value ? ' on' : '')} />
+        {!kf.done ? (
+          <>
+            <span>Play the {homeNoteHint()} and hold it steady…</span>
+            {kf.heard !== null && <span class="muted">hearing {noteName(Math.round(kf.heard))}</span>}
+            <div class="level"><div style={{ width: `${Math.round(kf.progress * 100)}%` }} /></div>
+          </>
+        ) : (
+          <span>{kf.message}</span>
+        )}
+        <span class="spacer" />
+        {kf.done && !kf.ok && <button class="ghost-btn small" onClick={findMyKey}>Try again</button>}
+        <button class="ghost-btn small" onClick={closeKeyFinder}>{kf.done ? 'Done' : 'Cancel'}</button>
+      </div>
+    );
+  }
   return (
     <div class="mic-status">
       <span class={'mic-dot' + (micOn.value ? ' on' : '')} />
@@ -211,6 +239,7 @@ function MicStatus() {
         r.midi !== null ? (
           <span>
             Hearing <b>{label(r.midi)}</b> {r.cents >= 0 ? '+' : ''}{Math.round(r.cents)}¢
+            {inst.naming === 'sargam' && <span class="muted"> · {noteName(r.midi)}{r.freq ? ` · ${Math.round(r.freq)} Hz` : ''}</span>}
           </span>
         ) : (
           <span>Listening… play a long note</span>
@@ -219,6 +248,13 @@ function MicStatus() {
         <span>Waiting for microphone permission…</span>
       )}
       <div class="level"><div style={{ width: `${Math.min(100, r.level * 600)}%` }} /></div>
+      {canFind && (
+        <>
+          <span class="spacer" />
+          <span class="muted small-text">Wrong names? Your flute may be in another key.</span>
+          <button class="ghost-btn small" onClick={findMyKey}>{findLabel}</button>
+        </>
+      )}
     </div>
   );
 }
